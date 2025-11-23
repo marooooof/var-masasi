@@ -1,14 +1,13 @@
 import streamlit as st
 import pandas as pd
 
-# 1. Sayfa Ayarları (Geniş Mod)
+# 1. Sayfa Ayarları
 st.set_page_config(page_title="VAR Masası", page_icon="⚽", layout="wide")
 
-# 2. CSS İLE TASARIM
+# 2. CSS Tasarım
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; }
-    [data-testid="stSidebar"] { background-color: #262730; }
     .pozisyon-karti {
         background-color: #1e1e1e;
         padding: 20px;
@@ -19,75 +18,75 @@ st.markdown("""
     }
     .karti-kirmizi { border-left: 6px solid #FF5252 !important; }
     h1, h2, h3, p { color: #ffffff; }
-    p { color: #e0e0e0; font-size: 16px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BAŞLIK ALANI ---
-col_logo, col_text = st.columns([1, 5])
-with col_logo:
-    st.write("⚽")
-with col_text:
-    st.title("VAR MASASI")
-    st.markdown("*Türkiye'nin En Ateşli Tartışma Platformu*")
+# --- BAŞLIK ---
+st.title("⚽ VAR MASASI")
+st.markdown("*Google Form Destekli Canlı Veri Tabanı*")
 
-# --- VERİ SAKLAMA ---
-if 'pozisyonlar' not in st.session_state:
-    st.session_state.pozisyonlar = [
-        {"Maç": "FB - TS", "Olay": "Osayi'nin ceza sahasında düşürülmesi", "Hakem": "Ali Şansalan", "Resmi Karar": "Penaltı", "Yorumcu": "Ahmet Çakar", "Durum": "❌ Katılmıyor", "Yorum": "Kendini yere atıyor, hakem eyyam yaptı."}
-    ]
+# --- VERİ ÇEKME FONKSİYONU ---
+def verileri_getir():
+    # BURAYA KENDİ ID'Nİ YAZACAKSIN (Aşağıdaki tırnakların içine)
+    SHEET_ID = "BURAYA_O_KARISIK_HARFLERI_YAPISTIR" 
+    
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+    try:
+        df = pd.read_csv(url)
+        return df
+    except:
+        return pd.DataFrame() # Hata olursa boş tablo dön
 
-# --- YAN MENÜ ---
+# Verileri Çek
+df = verileri_getir()
+
+# --- YAN MENÜ (FORM LİNKİ) ---
 with st.sidebar:
-    st.header("📝 Yeni Kayıt Gir")
-    mac_adi = st.text_input("Maç Adı", placeholder="Örn: GS - BJK")
-    olay = st.text_area("Olay/Pozisyon", placeholder="Pozisyonu kısaca anlat...")
-    hakem_adi = st.text_input("Hakem", placeholder="Hakem Adı")
-    resmi_karar = st.selectbox("Sahadaki Karar", ["Penaltı", "Devam", "Gol", "Ofsayt", "Kırmızı Kart"])
+    st.header("Yönetici Girişi")
+    st.info("Veri girmek için aşağıdaki butona tıkla ve formu doldur.")
     
-    st.markdown("---")
-    st.subheader("📺 Yorumcu Görüşü")
-    yorumcu_adi = st.selectbox("Yorumcu", ["Ahmet Çakar", "Erman Toroğlu", "Rıdvan Dilmen", "Trio", "Fırat Aydınus"])
-    yorumcu_karar = st.radio("Yorumcu Katılıyor mu?", ["✅ Katılıyor", "❌ Katılmıyor"])
-    yorum_metni = st.text_input("Yorum Özeti", placeholder="Ne dedi?")
+    # 10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug
+    form_linki = "https://forms.gle/SENIN_FORM_LINKIN"
+    st.link_button("📝 Yeni Veri Gir (Google Form)", form_linki)
     
-    if st.button("Listeye Ekle", type="primary"):
-        if mac_adi and olay:
-            st.session_state.pozisyonlar.insert(0, {
-                "Maç": mac_adi, "Olay": olay, "Hakem": hakem_adi,
-                "Resmi Karar": resmi_karar, "Yorumcu": yorumcu_adi,
-                "Durum": yorumcu_karar, "Yorum": yorum_metni
-            })
-            st.success("Pozisyon eklendi!")
+    if st.button("Verileri Yenile 🔄"):
+        st.rerun()
 
 # --- ANA EKRAN ---
-st.subheader(f"🔥 Güncel Gündem ({len(st.session_state.pozisyonlar)} Pozisyon)")
-
-# İstatistikler
-if len(st.session_state.pozisyonlar) > 0:
-    c1, c2, c3 = st.columns(3)
-    df = pd.DataFrame(st.session_state.pozisyonlar)
-    c1.metric("Toplam Tartışma", len(df))
-    c2.metric("Hakemi Destekleyen", len(df[df["Durum"] == "✅ Katılıyor"]))
-    c3.metric("Hakeme Karşı Çıkan", len(df[df["Durum"] == "❌ Katılmıyor"]))
-
-st.markdown("---")
-
-# Kartları Listele
-for p in st.session_state.pozisyonlar:
-    renk_class = "pozisyon-karti"
-    if p["Durum"] == "❌ Katılmıyor":
-        renk_class += " karti-kirmizi"
+if not df.empty:
+    # Google Form sütun isimleri bazen uzun olur, onları düzeltelim
+    # Senin formundaki sorulara göre burası değişebilir, ama genelde sırayla gelir.
+    # Sütun isimlerini kendi kafamıza göre yeniden adlandıralım:
+    try:
+        df.columns = ["Zaman", "Maç", "Olay", "Hakem", "Resmi Karar", "Yorumcu", "Durum", "Yorum"]
         
-    html_code = f"""
-    <div class="{renk_class}">
-        <h3 style="margin:0; color:#fff;">{p['Maç']} <span style="font-size:14px; color:#aaa;">(Hakem: {p['Hakem']})</span></h3>
-        <p style="margin-top:5px; color:#ccc;"><i>"{p['Olay']}"</i></p>
-        <div style="background-color:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin-top:10px;">
-            <strong style="color:#FFD700;">{p['Yorumcu']} Diyor ki:</strong><br>
-            <span style="font-size:18px;">{p['Durum']}</span> - {p['Yorum']}
-        </div>
-        <p style="font-size:12px; margin-top:5px; text-align:right;">Resmi Karar: <b>{p['Resmi Karar']}</b></p>
-    </div>
-    """
-    st.markdown(html_code, unsafe_allow_html=True)
+        # En yeni en üstte görünsün diye ters çevir
+        df = df.iloc[::-1]
+
+        st.subheader(f"🔥 Güncel Gündem ({len(df)} Pozisyon)")
+        
+        for index, row in df.iterrows():
+            # Renk Ayarı
+            renk_class = "pozisyon-karti"
+            # Formda "Hayır" seçilirse kırmızı olsun
+            if "Hayır" in str(row["Durum"]) or "Katılmıyor" in str(row["Durum"]):
+                renk_class += " karti-kirmizi"
+            
+            html_code = f"""
+            <div class="{renk_class}">
+                <h3 style="margin:0; color:#fff;">{row['Maç']} <span style="font-size:14px; color:#aaa;">(Hakem: {row['Hakem']})</span></h3>
+                <p style="margin-top:5px; color:#ccc;"><i>"{row['Olay']}"</i></p>
+                <div style="background-color:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin-top:10px;">
+                    <strong style="color:#FFD700;">{row['Yorumcu']} Diyor ki:</strong><br>
+                    <span style="font-size:18px;">{row['Durum']}</span> - {row['Yorum']}
+                </div>
+                <p style="font-size:12px; margin-top:5px; text-align:right;">Resmi Karar: <b>{row['Resmi Karar']}</b></p>
+            </div>
+            """
+            st.markdown(html_code, unsafe_allow_html=True)
+            
+    except Exception as e:
+        st.error(f"Sütun isimleri uyuşmadı, lütfen form sorularını kontrol et. Hata: {e}")
+        st.dataframe(df) # Hata olursa ham tabloyu göster
+else:
+    st.warning("Henüz hiç veri girilmemiş veya Excel bağlantısı hatalı.")
