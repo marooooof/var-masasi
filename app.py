@@ -1,13 +1,18 @@
 import streamlit as st
 import pandas as pd
 
-# 1. Sayfa Ayarları
-st.set_page_config(page_title="VAR Masası", page_icon="⚽", layout="wide")
+# 1. Sayfa Ayarları (Menüyü Gizle)
+st.set_page_config(page_title="VAR Masası", page_icon="⚽", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. CSS Tasarım
+# 2. CSS Tasarım (Yan menüyü tamamen yok et)
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; }
+    
+    /* Yan Menüyü Komple Gizle */
+    [data-testid="stSidebar"] { display: none; }
+    
+    /* Kart Tasarımı */
     .pozisyon-karti {
         background-color: #1e1e1e;
         padding: 20px;
@@ -18,57 +23,47 @@ st.markdown("""
     }
     .karti-kirmizi { border-left: 6px solid #FF5252 !important; }
     h1, h2, h3, p { color: #ffffff; }
+    
+    /* Link Rengi */
+    a { color: #888888 !important; text-decoration: none; }
+    a:hover { color: #ffffff !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BAŞLIK ---
-st.title("⚽ VAR MASASI")
-st.markdown("*Google Form Destekli Canlı Veri Tabanı*")
-
 # --- VERİ ÇEKME FONKSİYONU ---
 def verileri_getir():
-    # BURAYA KENDİ ID'Nİ YAZACAKSIN (Aşağıdaki tırnakların içine)
-    SHEET_ID = "BURAYA_O_KARISIK_HARFLERI_YAPISTIR" 
+    # --- BURAYI DOLDURMAYI UNUTMA ---
+    SHEET_ID = "10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug" 
     
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
     try:
         df = pd.read_csv(url)
         return df
     except:
-        return pd.DataFrame() # Hata olursa boş tablo dön
+        return pd.DataFrame()
 
 # Verileri Çek
 df = verileri_getir()
 
-# --- YAN MENÜ (FORM LİNKİ) ---
-with st.sidebar:
-    st.header("Yönetici Girişi")
-    st.info("Veri girmek için aşağıdaki butona tıkla ve formu doldur.")
-    
-    # 10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug
-    form_linki = "https://forms.gle/SENIN_FORM_LINKIN"
-    st.link_button("📝 Yeni Veri Gir (Google Form)", form_linki)
-    
-    if st.button("Verileri Yenile 🔄"):
-        st.rerun()
+# --- BAŞLIK ---
+c1, c2 = st.columns([1, 15])
+with c1:
+    st.write("⚽")
+with c2:
+    st.title("VAR MASASI")
+
+st.markdown("---")
 
 # --- ANA EKRAN ---
 if not df.empty:
-    # Google Form sütun isimleri bazen uzun olur, onları düzeltelim
-    # Senin formundaki sorulara göre burası değişebilir, ama genelde sırayla gelir.
-    # Sütun isimlerini kendi kafamıza göre yeniden adlandıralım:
     try:
+        # Sütun İsimleri
         df.columns = ["Zaman", "Maç", "Olay", "Hakem", "Resmi Karar", "Yorumcu", "Durum", "Yorum"]
-        
-        # En yeni en üstte görünsün diye ters çevir
-        df = df.iloc[::-1]
+        df = df.iloc[::-1] # En yeniyi en üste al
 
-        st.subheader(f"🔥 Güncel Gündem ({len(df)} Pozisyon)")
-        
+        # Pozisyonları Listele
         for index, row in df.iterrows():
-            # Renk Ayarı
             renk_class = "pozisyon-karti"
-            # Formda "Hayır" seçilirse kırmızı olsun
             if "Hayır" in str(row["Durum"]) or "Katılmıyor" in str(row["Durum"]):
                 renk_class += " karti-kirmizi"
             
@@ -77,8 +72,8 @@ if not df.empty:
                 <h3 style="margin:0; color:#fff;">{row['Maç']} <span style="font-size:14px; color:#aaa;">(Hakem: {row['Hakem']})</span></h3>
                 <p style="margin-top:5px; color:#ccc;"><i>"{row['Olay']}"</i></p>
                 <div style="background-color:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin-top:10px;">
-                    <strong style="color:#FFD700;">{row['Yorumcu']} Diyor ki:</strong><br>
-                    <span style="font-size:18px;">{row['Durum']}</span> - {row['Yorum']}
+                    <strong style="color:#FFD700;">{row['Yorumcu']}:</strong> {row['Durum']} <br>
+                    <span style="font-size:14px; color:#eee;">"{row['Yorum']}"</span>
                 </div>
                 <p style="font-size:12px; margin-top:5px; text-align:right;">Resmi Karar: <b>{row['Resmi Karar']}</b></p>
             </div>
@@ -86,7 +81,19 @@ if not df.empty:
             st.markdown(html_code, unsafe_allow_html=True)
             
     except Exception as e:
-        st.error(f"Sütun isimleri uyuşmadı, lütfen form sorularını kontrol et. Hata: {e}")
-        st.dataframe(df) # Hata olursa ham tabloyu göster
+        st.error("Veri bekleniyor...")
 else:
-    st.warning("Henüz hiç veri girilmemiş veya Excel bağlantısı hatalı.")
+    st.info("Veriler yükleniyor...")
+
+# --- ALT BİLGİ (GİZLİ ADMIN LİNKİ) ---
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; font-size: 12px; color: #444;">
+    VAR Masası © 2025 • Veriler Gerçek Yorumculardan Alınmıştır
+</div>
+""", unsafe_allow_html=True)
+
+# Admin linkini sayfanın EN ALTINA, çok küçük şekilde koydum.
+# Kaybolmasın diye lazım olur. İstersen bu 2 satırı silebilirsin.
+form_linki = "https://docs.google.com/forms/d/e/1FAIpQLSfKPW499r0Xdm2qbsVeJ-44lcvG8wZy8A9lBARQcfZF3bvL1g/viewform?usp=header"
+st.caption(f"[Yönetici Girişi]({form_linki})")
