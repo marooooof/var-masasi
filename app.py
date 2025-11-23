@@ -27,32 +27,3 @@ st.markdown("""
 # --- VERİ ÇEKME FONKSİYONU ---
 def verileri_getir():
     # SENİN EXCEL ID'N
-    SHEET_ID = "10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug"
-    
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
-    try:
-        df = pd.read_csv(url)
-        return df
-    except:
-        return pd.DataFrame()
-
-# Verileri Çek
-df = verileri_getir()
-
-# --- BAŞLIK ---
-c1, c2 = st.columns([1, 15])
-with c1:
-    st.write("⚽")
-with c2:
-    st.title("VAR MASASI")
-
-st.markdown("---")
-
-# --- ANA EKRAN ---
-if not df.empty:
-    try:
-        # Sütun İsimleri (Senin form sorularına göre)
-        if len(df.columns) >= 7:
-            # Sütunları standartlaştır
-            df.columns = ["Zaman", "Maç", "Olay", "Hakem", "Resmi Karar", "Yorumcu", "Durum", "Yorum"] + list(df.columns[8:])
-            df = df.iloc[::-1] # En yen
