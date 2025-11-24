@@ -26,13 +26,13 @@ def load_data(url):
 
 df = load_data(G_SHEET_URL)
 
-# Otomatik ilk seçimi yap
+# İlk seçim
 if not df.empty and st.session_state.selected_pos_name is None:
     valid_events = df['Olay'].dropna().unique().tolist()
     if valid_events:
         st.session_state.selected_pos_name = valid_events[0]
 
-# --- 2. CSS TASARIM ---
+# --- 2. CSS TASARIM (RESİMDEKİ HEADER STİLİ) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -40,18 +40,65 @@ st.markdown("""
     :root {
         --bg-dark: #0E0E11;
         --card-dark: #1A1A1F;
-        --accent-green: #00FF85;
+        --accent-green: #00FF85; /* O Resimdeki Parlak Yeşil */
         --accent-purple: #6A0CFF;
-        --accent-red: #E53E3E;
         --text-white: #EAEAEA;
-        --text-muted: #A0A0A0;
+        --search-bg: #27272A; /* Arama kutusu koyu gri */
     }
 
     .stApp { background-color: var(--bg-dark); font-family: 'Inter', sans-serif; color: var(--text-white); }
     header { visibility: hidden; }
     .block-container { padding-top: 1rem; padding-bottom: 2rem; }
 
-    /* Kartlar */
+    /* --- ÖZEL HEADER (RESİMDEKİ GİBİ) --- */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #2A2A2F; /* Hafif çizgi */
+        margin-bottom: 20px;
+    }
+    
+    .logo-area {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .vm-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        /* Resimdeki Yeşil-Mor Gradyan */
+        background: linear-gradient(135deg, #00FF85 0%, #0094FF 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 800;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 15px rgba(0, 255, 133, 0.2);
+    }
+    
+    .app-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        letter-spacing: -0.5px;
+    }
+
+    /* Streamlit Arama Kutusunu Özelleştirme */
+    .stTextInput > div > div > input {
+        background-color: var(--search-bg) !important;
+        color: #A1A1AA !important;
+        border: 1px solid #3F3F46 !important;
+        border-radius: 99px !important; /* Hap Şekli */
+        padding: 10px 20px !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* --- DİĞER KART STİLLERİ --- */
     .custom-card {
         background-color: var(--card-dark);
         border-radius: 16px;
@@ -59,89 +106,86 @@ st.markdown("""
         margin-bottom: 20px;
         border: 1px solid #2A2A2F;
     }
-    .card-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: var(--accent-green);}
-
-    /* SOL LİSTE BUTONLARI */
+    
     div.stButton > button {
         width: 100%;
         background-color: var(--card-dark);
         border: 1px solid #2A2A2F;
         color: var(--text-white);
-        border-radius: 999px;
+        border-radius: 99px;
         text-align: left;
         padding: 12px 20px;
         font-weight: 600;
         margin-bottom: 5px;
     }
     div.stButton > button:hover { border-color: var(--accent-green); color: var(--accent-green); }
-    div.stButton > button:focus { background-color: var(--accent-green) !important; color: black !important; border-color: var(--accent-green) !important; }
-
-    /* ORTA ALAN ETİKETLERİ */
+    
     .decision-badge {
         display: inline-flex; align-items: center; gap: 8px;
         padding: 8px 20px; border-radius: 999px; font-weight: 700;
         text-transform: uppercase; margin-bottom: 20px; font-size: 0.9rem;
     }
     .badge-green-fill { background: var(--accent-green); color: black; }
-    .badge-red-fill { background: var(--accent-red); color: white; }
+    .badge-red-fill { background: #E53E3E; color: white; }
     .badge-dark-fill { background: #2A2A2F; color: var(--text-white); }
-
-    /* PROGRESS BAR */
-    .progress-container { background: #2A2A2F; border-radius: 999px; height: 10px; width: 100%; overflow: hidden; margin-top: 10px; }
+    
+    .progress-container { background: #2A2A2F; border-radius: 999px; height: 8px; width: 100%; overflow: hidden; margin-top: 10px; }
     .progress-fill { height: 100%; background: var(--accent-green); border-radius: 999px; }
-    .progress-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
-
-    /* ANALİZ NOTU */
-    .note-box { background: #222227; border-radius: 12px; padding: 15px; margin-top: 20px; border: 1px solid #2A2A2F;}
-    .note-header { font-weight: 600; margin-bottom: 5px; color: var(--accent-green); display: flex; align-items: center; gap: 6px;}
-
-    /* YORUMCULAR */
+    
     .commentator-item {
         display: flex; gap: 12px; padding: 15px;
         background: #222227; border-radius: 12px; margin-bottom: 10px; align-items: flex-start; border: 1px solid #2A2A2F;
     }
-    .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #333;}
-    .icon-box { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff;}
+    .icon-box { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
     .icon-check { background: var(--accent-green); color: black; }
-    .icon-cross { background: var(--accent-red); color: white; }
-    
-    /* Üst Arama Barı */
-    .top-bar-input { background: var(--card-dark); border: 1px solid #2A2A2F; color: var(--text-muted); padding: 8px 15px; border-radius: 999px; width: 250px;}
-    .top-bar-btn { background: var(--accent-green); color: black; padding: 8px 20px; border-radius: 999px; font-weight: 600; border: none; cursor: pointer; }
+    .icon-cross { background: #E53E3E; color: white; }
 
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HEADER ---
-c1, c2 = st.columns([1, 2])
-with c1:
-    st.markdown('<div style="display: flex; align-items: center; gap: 12px; font-size: 1.5rem; font-weight: 700; margin-bottom: 20px;"><div style="width:40px;height:40px;background:var(--accent-green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:black;font-weight:bold;">VC</div>VAR Masası</div>', unsafe_allow_html=True)
-with c2:
+# --- 3. HEADER (RESİMDEKİ GİBİ YAPILANDIRMA) ---
+# Logonun ve başlığın olduğu sol taraf ile arama kutusunun olduğu sağ tarafı ayırıyoruz
+col_header_left, col_header_right = st.columns([1, 1])
+
+with col_header_left:
     st.markdown("""
-    <div style="display: flex; justify-content: flex-end; gap: 15px; align-items: center; margin-bottom: 20px;">
-        <input type="text" class="top-bar-input" placeholder="Pozisyon ara...">
-        <button class="top-bar-btn">Yeni Analiz Ekle</button>
+    <div class="logo-area">
+        <div class="vm-logo">VM</div>
+        <div class="app-title">VAR Masası</div>
     </div>
     """, unsafe_allow_html=True)
 
-# --- 4. GRID ---
+with col_header_right:
+    # Arama kutusu (CSS ile resimdeki gibi koyu ve yuvarlak yapıldı)
+    search_query = st.text_input("search", placeholder="Pozisyon ara...", label_visibility="collapsed")
+
+st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
+
+# --- 4. GRID YAPISI ---
 col_left, col_center, col_right = st.columns([3, 6, 3])
 
-# --- SOL: TIKLANABİLİR LİSTE ---
+# --- SOL: POZİSYON LİSTESİ ---
 with col_left:
-    st.markdown('<div class="custom-card"><div class="card-title">≡ Pozisyon Listesi</div>', unsafe_allow_html=True)
+    st.markdown('<div class="custom-card"><div style="font-weight:700; color:var(--accent-green); margin-bottom:15px;">≡ Pozisyon Listesi</div>', unsafe_allow_html=True)
     
     if not df.empty:
-        unique_events = df['Olay'].dropna().unique()
-        for event in unique_events:
-            # Butona basılırsa session_state'i güncelle ve sayfayı yenile
+        # Arama filtresi
+        all_events = df['Olay'].dropna().unique()
+        if search_query:
+            filtered_events = [e for e in all_events if search_query.lower() in str(e).lower()]
+        else:
+            filtered_events = all_events
+
+        for event in filtered_events:
             if st.button(event, key=f"btn_{event}", use_container_width=True):
                 st.session_state.selected_pos_name = event
                 st.rerun()
                 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- ORTA: DETAY (HTML FIX) ---
+# --- ORTA: DETAY ---
 with col_center:
     if st.session_state.selected_pos_name and not df.empty:
         selected_pos = st.session_state.selected_pos_name
@@ -154,7 +198,6 @@ with col_center:
 
         badge_cls = "badge-dark-fill"
         badge_icon = "⚖️"
-        decision_text = str(ref_decision).upper()
         
         if "penaltı" in str(ref_decision).lower(): 
             badge_cls = "badge-green-fill"
@@ -170,8 +213,7 @@ with col_center:
         total = len(filtered_df)
         percent = round((agree_count/total)*100) if total > 0 else 0
 
-        # ÖNEMLİ DÜZELTME: HTML String'i girintisiz (sola yapışık) olarak oluşturuyoruz.
-        # Bu sayede Streamlit bunu "kod bloğu" sanmayacak.
+        # HTML KART (Düzgün formatlanmış)
         html_content = f"""
 <div class="custom-card" style="padding:0; overflow:hidden; border: none;">
     <div style="height: 300px; position: relative; background: url('https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80') center/cover;">
@@ -179,7 +221,7 @@ with col_center:
     </div>
     <div style="padding: 25px; background-color: var(--card-dark); border: 1px solid #2A2A2F; border-top: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
         <div class="decision-badge {badge_cls}">
-            <span>{badge_icon}</span> {decision_text}
+            <span>{badge_icon}</span> {str(ref_decision).upper()}
         </div>
         <h2 style="margin-bottom: 10px; color: white;">Hakem Kararı</h2>
         <p style="color: var(--text-white); line-height: 1.6; opacity: 0.9; margin-bottom: 20px;">
@@ -193,14 +235,14 @@ with col_center:
             <div class="progress-container">
                 <div class="progress-fill" style="width: {percent}%;"></div>
             </div>
-            <div class="progress-labels">
+            <div class="progress-labels" style="display:flex; justify-content:space-between; font-size:0.8rem; color:#A0A0A0; margin-top:5px;">
                 <span>Katılıyor</span>
                 <span>Katılmıyor</span>
             </div>
         </div>
-        <div class="note-box">
-            <div class="note-header">📄 Analiz Notu</div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin:0;">
+        <div style="background: #222227; border-radius: 12px; padding: 15px; border: 1px solid #2A2A2F;">
+            <div style="font-weight: 600; margin-bottom: 5px; color: var(--accent-green);">📄 Analiz Notu</div>
+            <p style="color: #A0A0A0; font-size: 0.9rem; line-height: 1.5; margin:0;">
                 {ref_note}
             </p>
         </div>
@@ -214,7 +256,7 @@ with col_center:
 
 # --- SAĞ: YORUMCULAR ---
 with col_right:
-    st.markdown('<div class="custom-card"><div class="card-title">💬 Yorumcu Görüşleri</div>', unsafe_allow_html=True)
+    st.markdown('<div class="custom-card"><div style="font-weight:700; margin-bottom:15px;">💬 Yorumcu Görüşleri</div>', unsafe_allow_html=True)
     
     if st.session_state.selected_pos_name and not df.empty:
         for index, row in filtered_df.iterrows():
@@ -225,15 +267,14 @@ with col_right:
             is_agree = (y_fikir == 'Evet')
             icon_cls = "icon-check" if is_agree else "icon-cross"
             icon_symbol = "✔" if is_agree else "✖"
-            avatar_url = f"https://i.pravatar.cc/100?u={index + 50}"
+            initial = y_isim[0] if len(y_isim) > 0 else "A"
 
-            # Yorumcular için de girintiyi kaldırıyoruz
             commentator_html = f"""
 <div class="commentator-item">
-    <img src="{avatar_url}" class="avatar">
+    <div class="avatar">{initial}</div>
     <div style="flex: 1;">
         <div style="font-weight: 700; margin-bottom: 4px; color: var(--text-white);">{y_isim}</div>
-        <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+        <div style="color: #A0A0A0; font-size: 0.85rem; line-height: 1.4;">
             "{y_yorum[:100]}..."
         </div>
     </div>
