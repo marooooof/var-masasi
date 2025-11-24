@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 
-# --- 1. AYARLAR VE DATA ---
+# --- 1. SAYFA AYARLARI ---
 st.set_page_config(page_title="VAR Masası", layout="wide", page_icon="⚽")
 
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
-# Session State
+# --- 2. FONKSİYONLAR ---
 if 'selected_pos_name' not in st.session_state:
     st.session_state.selected_pos_name = None
 
@@ -32,7 +32,7 @@ if not df.empty and st.session_state.selected_pos_name is None:
     if valid_events:
         st.session_state.selected_pos_name = valid_events[0]
 
-# --- 2. CSS TASARIM ---
+# --- 3. CSS TASARIM ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -101,12 +101,11 @@ st.markdown("""
         overflow: hidden;
         padding-bottom: 20px;
     }
-    /* Resimlerin tam oturmasını sağlayan kısım burası */
     .image-container {
         position: relative;
-        width: 100%; height: 320px;
-        background-size: cover;       /* Alanı doldur */
-        background-position: center;  /* Ortala */
+        width: 100%; 
+        /* Yükseklik otomatik olsun ki resim sığsın */
+        min-height: 200px;
     }
     .floating-badge {
         position: absolute; top: 20px; left: 20px;
@@ -121,7 +120,8 @@ st.markdown("""
         display: inline-flex; align-items: center; gap: 8px;
         padding: 10px 24px; border-radius: 99px;
         font-weight: 800; font-size: 14px; text-transform: uppercase;
-        margin-top: -25px; margin-left: 25px; position: relative;
+        /* Resmi takip etmesi için margin ayarları */
+        margin-top: -30px; margin-left: 25px; position: relative; z-index: 10;
         box-shadow: 0 4px 15px rgba(0, 255, 133, 0.2);
     }
     .content-area { padding: 25px; padding-top: 10px; }
@@ -236,35 +236,40 @@ with col_center:
 
         html_code = f"""
 <div class="main-card">
-<div class="image-container" style="background-image: url('{main_image_url}');">
-<div class="floating-badge">Var İncelemesi</div>
-</div>
-<div style="{badge_style}" class="decision-pill">
-{icon} {decision_text}
-</div>
-<div class="content-area">
-<div class="section-title">Hakem Kararı</div>
-<div class="desc-text">
-Ceza sahası içerisinde <b>{match_name}</b> maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
-</div>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-<span style="font-weight:700; font-size:14px;">Kamuoyu Görüşü</span>
-<span style="color:#00FF85; font-weight:700;">{percent}%</span>
-</div>
-<div class="progress-track">
-<div class="progress-bar" style="width: {percent}%;"></div>
-</div>
-<div class="stat-row">
-<span>Katılıyor</span>
-<span>Katılmıyor</span>
-</div>
-<div class="analysis-box">
-<div class="analysis-header">📄 Analiz Notu</div>
-<div style="font-size:13px; color:#A0A0A0; line-height:1.5;">
-{ref_note}
-</div>
-</div>
-</div>
+    <div style="position: relative; width: 100%; background-color: #000;">
+        <img src="{main_image_url}" style="width: 100%; height: auto; display: block; border-top-left-radius: 20px; border-top-right-radius: 20px;">
+        <div class="floating-badge" style="top: 15px; left: 15px;">Var İncelemesi</div>
+    </div>
+
+    <div style="{badge_style}" class="decision-pill">
+        {icon} {decision_text}
+    </div>
+
+    <div class="content-area">
+        <div class="section-title">Hakem Kararı</div>
+        <div class="desc-text">
+            Ceza sahası içerisinde <b>{match_name}</b> maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <span style="font-weight:700; font-size:14px;">Kamuoyu Görüşü</span>
+            <span style="color:#00FF85; font-weight:700;">{percent}%</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-bar" style="width: {percent}%;"></div>
+        </div>
+        <div class="stat-row">
+            <span>Katılıyor</span>
+            <span>Katılmıyor</span>
+        </div>
+        
+        <div class="analysis-box">
+            <div class="analysis-header">📄 Analiz Notu</div>
+            <div style="font-size:13px; color:#A0A0A0; line-height:1.5;">
+                {ref_note}
+            </div>
+        </div>
+    </div>
 </div>
 """
         st.markdown(html_code, unsafe_allow_html=True)
