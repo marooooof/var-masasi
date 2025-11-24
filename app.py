@@ -3,20 +3,16 @@ import pandas as pd
 import numpy as np
 
 # --- 1. FONKSİYONLAR VE VERİ ---
-
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
-# Yeni ve Güçlendirilmiş Emniyet Fonksiyonu: Boş (NaN) değerleri stringe çevirir.
+# Emniyet Fonksiyonları
 def safe_get(df, column_name, default='Gerekçe/Analiz notu mevcut değil.'):
     if df.empty or column_name not in df.columns or df.shape[0] == 0:
         return default
     
     value = df[column_name].iloc[0]
-    
-    # 🚨 KRİTİK DÜZELTME: Eğer değer boş (NaN) ise, varsayılan metni döndür.
     if pd.isna(value):
         return default
-        
     return str(value)
 
 @st.cache_data(ttl=60)
@@ -24,25 +20,31 @@ def load_data(url):
     try:
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip() 
-        
         if 'Zaman damgası' in df.columns:
             df = df.drop(columns=['Zaman damgası'])
-            
         return df
     except Exception:
         return pd.DataFrame()
 
-# 2. TASARIM KODLARI (Aynı)
-st.set_page_config(page_title="VARCast - Pozisyon Analiz", layout="wide", page_icon="⚽")
+# 2. TASARIM KODLARI
+st.set_page_config(page_title="VARCast - Gelişmiş Analiz", layout="wide", page_icon="⚽")
 st.markdown("""
 <style>
-    /* ... (CSS KODU AYNI KALIYOR) ... */
     .stApp { background-color: #0E0E11; color: #EAEAEA; font-family: Arial, sans-serif; }
     .stContainer, .css-fg4ri0 { background: rgba(17,17,19,0.6); backdrop-filter: blur(6px); border-radius: 1rem; border: 1px solid rgba(34,34,40, 0.5); padding: 2rem; margin-bottom: 1rem; }
     h1, h2, h3 { color: #FFFFFF; font-weight: 600; text-align: center; }
     .correct-badge { background-color: #38a169 !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
     .wrong-badge { background-color: #E53E3E !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
-    .commentator-card { background-color: #121217; border-radius: 8px; padding: 12px; border: 1px solid #1A1A1F; margin-bottom: 10px;}
+    .commentator-card { 
+        background-color: #121217; 
+        border-radius: 8px; 
+        padding: 12px; 
+        border: 1px solid #1A1A1F; 
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -52,49 +54,128 @@ st.markdown("""
 df = load_data(G_SHEET_URL)
 
 if df.empty:
-    st.error("Veri yüklenemedi. Uygulama çökmesini engelledik, ancak veri boş.")
+    st.error("Veri yüklenemedi. Lütfen Google Sheets bağlantısını ve sütun adlarını kontrol edin.")
     st.stop()
 
+# 'Maç Adı' sütununu takımlara ayırma (Basit varsayım: "A Takımı - B Takımı" formatında)
+def extract_teams(match_name):
+    try:
+        # Maç Adı'nı '-' işaretinden ayırıp her iki takımı da döndürür
+        teams = [team.strip() for team in match_name.split('-')]
+        return teams
+    except:
+        return []
 
-# 4. POZİSYON SEÇİMİ 
-position_column_name = 'Olay' 
+all_teams = set()
+for match in df['Maç Adı'].unique():
+    for team in extract_teams(match):
+        if team:
+            all_teams.add(team)
 
-try:
-    position_list = df[position_column_name].unique().tolist()
-    default_position = position_list[0] if position_list else 'Veri Yok'
-    
-    selected_position = st.selectbox(
-        "🔎 Pozisyonu Seçiniz:", 
-        options=position_list, 
-        index=position_list.index(default_position) if default_position in position_list else 0,
-        placeholder="Pozisyon ara...",
-        key="position_selector"
+all_teams = sorted(list(all_teams))
+all_commentators = sorted(df['Yorumcu'].unique().tolist())
+all_referees = sorted(df['Hakem'].unique().tolist())
+
+# 4. ÇOKLU FİLTRELEME
+st.subheader("🔍 Analiz Filtreleri")
+filter_cols = st.columns(3)
+
+# --- TAKIM SEÇİMİ ---
+with filter_cols[0]:
+    selected_team = st.selectbox(
+        "⚽ Takımı Seçiniz:", 
+        options=['Tümü'] + all_teams, 
+        placeholder="Takım ara...",
+        key="team_selector"
     )
-    
-except KeyError:
-    st.error("KOD SALDIRISI ENGELLENDİ: 'Olay' sütunu yok. Lütfen E-Tablonuzdaki pozisyon başlığı sütun adını tekrar kontrol edin.")
+
+# --- YORUMCU SEÇİMİ ---
+with filter_cols[1]:
+    selected_commentator = st.selectbox(
+        "🎙️ Yorumcuyu Seçiniz:", 
+        options=['Tümü'] + all_commentators, 
+        placeholder="Yorumcu ara...",
+        key="commentator_selector"
+    )
+
+# --- HAKEM SEÇİMİ ---
+with filter_cols[2]:
+    selected_referee = st.selectbox(
+        "👤 Hakemi Seçiniz:", 
+        options=['Tümü'] + all_referees, 
+        placeholder="Hakem ara...",
+        key="referee_selector"
+    )
+
+# 5. KADEMELİ FİLTRELEME MANTIĞI
+filtered_df = df.copy()
+
+# 1. Takım Filtresi
+if selected_team != 'Tümü':
+    # Maç Adı sütununda seçilen takımın geçtiği satırları bul
+    filtered_df = filtered_df[filtered_df['Maç Adı'].apply(lambda x: selected_team in extract_teams(x))]
+
+# 2. Yorumcu Filtresi
+if selected_commentator != 'Tümü':
+    filtered_df = filtered_df[filtered_df['Yorumcu'] == selected_commentator]
+
+# 3. Hakem Filtresi
+if selected_referee != 'Tümü':
+    filtered_df = filtered_df[filtered_df['Hakem'] == selected_referee]
+
+# Filtrelenmiş veri çerçevesi artık current_analysis_df oluyor.
+current_analysis_df = filtered_df
+
+# Analizin yapılacağı olaylar listesi
+position_list = current_analysis_df['Olay'].unique().tolist()
+default_position = position_list[0] if position_list else 'Veri Yok'
+
+if current_analysis_df.empty:
+    st.info("Seçtiğiniz filtrelere uyan herhangi bir olay bulunamadı.")
     st.stop()
 
 
-# Seçilen pozisyona ait tüm yorumcu kayıtlarını filtrele
-current_analysis_df = df[df[position_column_name] == selected_position]
+# 6. POZİSYON SEÇİMİ (Filtrelenmiş listeden)
+st.markdown("---")
+selected_position = st.selectbox(
+    "📝 Analiz Edilecek Pozisyonu Seçiniz:", 
+    options=position_list, 
+    index=position_list.index(default_position) if default_position in position_list else 0,
+    placeholder="Pozisyon ara...",
+    key="position_analyzer"
+)
 
-# Hakem kararını al (ŞİMDİ safe_get KULLANIYORUZ - nan hatası artık yok)
-ref_decision = safe_get(current_analysis_df, 'Hakem Karar', default='Karar Girilmemiş') 
-ref_explanation = safe_get(current_analysis_df, 'Yorum') # Yorum sütununu gerekçe/analiz notu olarak kullandık
+# Son filtreden sonraki veri
+final_analysis_df = current_analysis_df[current_analysis_df['Olay'] == selected_position]
 
-# 5. LAYOUT: 3 sütunlu düzeni kur
+# Çekilecek tekil bilgiler (Sadece ilk kayıttan çekmek yeterli)
+ref_decision = safe_get(final_analysis_df, 'Hakem Karar', default='Karar Girilmemiş') 
+ref_explanation = safe_get(final_analysis_df, 'Yorum')
+
+
+# 7. LAYOUT ve GÖRSELLEŞTİRME
+st.markdown("---")
 col_list = st.columns([1, 2, 1])
 
-# --- SOL SÜTUN (HATANIN KAYNAĞI BURASIYDI) ---
+# --- SOL SÜTUN ---
 with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
-    st.markdown(f"<div class='neutral-badge'>Toplam Kayıt: {len(current_analysis_df)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='neutral-badge'>Toplam Yorumcu Kaydı: {len(final_analysis_df)}</div>", unsafe_allow_html=True)
     st.markdown("---")
     st.subheader("Analiz Notu")
-    
-    # 🚨 DÜZELTME YAPILDI: ref_explanation artık her zaman string, dilimleme hatası vermeyecek.
     st.markdown(f"<p class='text-sm opacity-80'>{ref_explanation[:200]}...</p>", unsafe_allow_html=True)
+
+    # 8. YORUMCU ORANI HESABI (YENİ İSTEK)
+    agree_count_all = current_analysis_df[current_analysis_df['6. sütun'] == 'Evet'].shape[0]
+    total_count_all = len(current_analysis_df)
+    
+    # Hakemle aynı fikirde olma oranını genel veri setinde hesapla
+    overall_agree_percent = round((agree_count_all / total_count_all) * 100) if total_count_all > 0 else 0
+
+    st.markdown("---")
+    st.subheader("Genel Oran")
+    st.markdown(f"**Filtrelenmiş Kayıtlarda** Hakemle Aynı Görüş Oranı: **{overall_agree_percent}%**")
+    st.progress(overall_agree_percent / 100)
 
 
 # --- ORTA SÜTUN (KARAR VE İSTATİSTİK) ---
@@ -110,37 +191,36 @@ with col_list[1]:
         st.markdown(f"<div class='{badge_class}'>{ref_decision.upper()}</div>", unsafe_allow_html=True)
         st.markdown(f"<p class='text-sm opacity-80 mt-3'>Gerekçe: {ref_explanation}</p>", unsafe_allow_html=True)
 
-        # İstatistik Barı Hesaplama
-        agree_count = current_analysis_df[current_analysis_df['6. sütun'] == 'Evet'].shape[0]
-        total = len(current_analysis_df)
-        agree_percent = round((agree_count / total) * 100) if total > 0 else 0
-
         st.markdown("---")
-        st.markdown(f"**Hakem ile aynı görüşteki yorumcuların oranı:** {agree_percent}%")
-        st.progress(agree_percent)
+        st.subheader("Pozisyona Özel İstatistik")
+        # Sadece seçilen pozisyon için istatistik
+        agree_count_pos = final_analysis_df[final_analysis_df['6. sütun'] == 'Evet'].shape[0]
+        total_count_pos = len(final_analysis_df)
+        agree_percent_pos = round((agree_count_pos / total_count_pos) * 100) if total_count_pos > 0 else 0
+
+        st.markdown(f"**Bu pozisyonda** Hakemle Aynı Görüşteki Yorumcu Oranı: **{agree_percent_pos}%**")
+        st.progress(agree_percent_pos / 100)
 
 # --- SAĞ SÜTUN (YORUMCULAR) ---
 with col_list[2]:
     st.subheader("🎙️ Yorumcu Görüşleri")
     
-    if not current_analysis_df.empty:
-        for index, row in current_analysis_df.iterrows():
-            # SÜTUN İSİMLERİ kontrol edildi ve kullanıldı
+    if not final_analysis_df.empty:
+        for index, row in final_analysis_df.iterrows():
             name = row.get('Yorumcu', 'Anonim')
             opinion_text = row.get('Yorum', 'Görüş belirtilmemiş.')
             agreed = row.get('6. sütun', 'Bilinmiyor') == 'Evet'
             
             status_emoji = '✅' if agreed else '❌'
-            status_class = 'stSuccess' if agreed else 'stError'
             
             st.markdown(
                 f"""
                 <div class='commentator-card'>
                     <div style='font-weight: 600; color: #4299e1;'>{name}</div>
-                    <div class='{status_class}'>{status_emoji}</div>
-                    <div class='text-sm opacity-85 mt-2'>{opinion_text}</div>
+                    <div>Yorum: {opinion_text}</div>
+                    <div style='font-weight: 700;'>Hakemle Aynı Fikirde: {status_emoji}</div>
                 </div>
                 """, unsafe_allow_html=True
             )
     else:
-        st.markdown("<p class='opacity-70'>Bu pozisyon için henüz yorumcu kaydı yok.</p>", unsafe_allow_html=True)
+        st.markdown("<p class='opacity-70'>Bu pozisyon için yorumcu kaydı yok.</p>", unsafe_allow_html=True)
