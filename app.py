@@ -5,13 +5,13 @@ import numpy as np
 # --- 1. FONKSİYONLAR VE VERİ ---
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
-# Emniyet Fonksiyonları
+# Emniyet Fonksiyonları (safe_get ve load_data aynı kalıyor)
 def safe_get(df, column_name, default='Gerekçe/Analiz notu mevcut değil.'):
     if df.empty or column_name not in df.columns or df.shape[0] == 0:
         return default
     
     value = df[column_name].iloc[0]
-    if pd.isna(value):
+    if pd.isna(value): # Boş (NaN) kontrolü
         return default
     return str(value)
 
@@ -36,14 +36,8 @@ st.markdown("""
     .correct-badge { background-color: #38a169 !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
     .wrong-badge { background-color: #E53E3E !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
     .commentator-card { 
-        background-color: #121217; 
-        border-radius: 8px; 
-        padding: 12px; 
-        border: 1px solid #1A1A1F; 
-        margin-bottom: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
+        background-color: #121217; border-radius: 8px; padding: 12px; border: 1px solid #1A1A1F; margin-bottom: 10px;
+        display: flex; flex-direction: column; gap: 5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -57,30 +51,37 @@ if df.empty:
     st.error("Veri yüklenemedi. Lütfen Google Sheets bağlantısını ve sütun adlarını kontrol edin.")
     st.stop()
 
-# 'Maç Adı' sütununu takımlara ayırma (Basit varsayım: "A Takımı - B Takımı" formatında)
+
+# Maç Adı sütununu takımlara ayırma (Bu fonksiyon NaN değerleri görmezden gelir)
 def extract_teams(match_name):
     try:
-        # Maç Adı'nı '-' işaretinden ayırıp her iki takımı da döndürür
-        teams = [team.strip() for team in match_name.split('-')]
+        # Maç Adı'nın NaN olmadığını kontrol et
+        if pd.isna(match_name):
+            return []
+        teams = [team.strip() for team in str(match_name).split('-')]
         return teams
     except:
         return []
 
+# 4. TÜM LİSTELERİ OLUŞTURMA (NaN/TypeError Düzeltmeleri Uygulandı)
 all_teams = set()
-for match in df['Maç Adı'].unique():
+# Maç Adı sütunundaki boş satırları atıyoruz (dropna())
+for match in df['Maç Adı'].dropna().unique(): 
     for team in extract_teams(match):
         if team:
             all_teams.add(team)
 
 all_teams = sorted(list(all_teams))
-all_commentators = sorted(df['Yorumcu'].unique().tolist())
-all_referees = sorted(df['Hakem'].unique().tolist())
 
-# 4. ÇOKLU FİLTRELEME
+# 🟢 HATA ÇÖZÜMÜ: Yorumcu ve Hakem listelerini oluştururken boş (NaN) değerleri at
+all_commentators = sorted(df['Yorumcu'].dropna().unique().tolist()) 
+all_referees = sorted(df['Hakem'].dropna().unique().tolist())
+
+
+# 5. ÇOKLU FİLTRELEME ARAYÜZÜ
 st.subheader("🔍 Analiz Filtreleri")
 filter_cols = st.columns(3)
 
-# --- TAKIM SEÇİMİ ---
 with filter_cols[0]:
     selected_team = st.selectbox(
         "⚽ Takımı Seçiniz:", 
@@ -89,7 +90,6 @@ with filter_cols[0]:
         key="team_selector"
     )
 
-# --- YORUMCU SEÇİMİ ---
 with filter_cols[1]:
     selected_commentator = st.selectbox(
         "🎙️ Yorumcuyu Seçiniz:", 
@@ -98,7 +98,6 @@ with filter_cols[1]:
         key="commentator_selector"
     )
 
-# --- HAKEM SEÇİMİ ---
 with filter_cols[2]:
     selected_referee = st.selectbox(
         "👤 Hakemi Seçiniz:", 
@@ -107,12 +106,11 @@ with filter_cols[2]:
         key="referee_selector"
     )
 
-# 5. KADEMELİ FİLTRELEME MANTIĞI
+# 6. KADEMELİ FİLTRELEME MANTIĞI
 filtered_df = df.copy()
 
 # 1. Takım Filtresi
 if selected_team != 'Tümü':
-    # Maç Adı sütununda seçilen takımın geçtiği satırları bul
     filtered_df = filtered_df[filtered_df['Maç Adı'].apply(lambda x: selected_team in extract_teams(x))]
 
 # 2. Yorumcu Filtresi
@@ -123,19 +121,18 @@ if selected_commentator != 'Tümü':
 if selected_referee != 'Tümü':
     filtered_df = filtered_df[filtered_df['Hakem'] == selected_referee]
 
-# Filtrelenmiş veri çerçevesi artık current_analysis_df oluyor.
 current_analysis_df = filtered_df
 
-# Analizin yapılacağı olaylar listesi
-position_list = current_analysis_df['Olay'].unique().tolist()
-default_position = position_list[0] if position_list else 'Veri Yok'
+position_column_name = 'Olay' 
 
 if current_analysis_df.empty:
     st.info("Seçtiğiniz filtrelere uyan herhangi bir olay bulunamadı.")
     st.stop()
 
+# Son pozisyon seçimi
+position_list = current_analysis_df[position_column_name].unique().tolist()
+default_position = position_list[0] if position_list else 'Veri Yok'
 
-# 6. POZİSYON SEÇİMİ (Filtrelenmiş listeden)
 st.markdown("---")
 selected_position = st.selectbox(
     "📝 Analiz Edilecek Pozisyonu Seçiniz:", 
@@ -148,7 +145,7 @@ selected_position = st.selectbox(
 # Son filtreden sonraki veri
 final_analysis_df = current_analysis_df[current_analysis_df['Olay'] == selected_position]
 
-# Çekilecek tekil bilgiler (Sadece ilk kayıttan çekmek yeterli)
+# Çekilecek tekil bilgiler
 ref_decision = safe_get(final_analysis_df, 'Hakem Karar', default='Karar Girilmemiş') 
 ref_explanation = safe_get(final_analysis_df, 'Yorum')
 
@@ -157,7 +154,7 @@ ref_explanation = safe_get(final_analysis_df, 'Yorum')
 st.markdown("---")
 col_list = st.columns([1, 2, 1])
 
-# --- SOL SÜTUN ---
+# --- SOL SÜTUN (ANALİZ NOTU) ---
 with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
     st.markdown(f"<div class='neutral-badge'>Toplam Yorumcu Kaydı: {len(final_analysis_df)}</div>", unsafe_allow_html=True)
@@ -165,11 +162,9 @@ with col_list[0]:
     st.subheader("Analiz Notu")
     st.markdown(f"<p class='text-sm opacity-80'>{ref_explanation[:200]}...</p>", unsafe_allow_html=True)
 
-    # 8. YORUMCU ORANI HESABI (YENİ İSTEK)
+    # Genel Oran
     agree_count_all = current_analysis_df[current_analysis_df['6. sütun'] == 'Evet'].shape[0]
     total_count_all = len(current_analysis_df)
-    
-    # Hakemle aynı fikirde olma oranını genel veri setinde hesapla
     overall_agree_percent = round((agree_count_all / total_count_all) * 100) if total_count_all > 0 else 0
 
     st.markdown("---")
@@ -183,7 +178,6 @@ with col_list[1]:
     with st.container(border=True): 
         st.markdown(f"## 🛎️ Hakem Kararı: {ref_decision}")
         
-        # Karar etiketi
         badge_class = 'neutral-badge'
         if ref_decision in ['Penaltı', 'Kırmızı Kart']: badge_class = 'wrong-badge'
         if ref_decision in ['Devam', 'Aut']: badge_class = 'correct-badge'
@@ -193,7 +187,7 @@ with col_list[1]:
 
         st.markdown("---")
         st.subheader("Pozisyona Özel İstatistik")
-        # Sadece seçilen pozisyon için istatistik
+        
         agree_count_pos = final_analysis_df[final_analysis_df['6. sütun'] == 'Evet'].shape[0]
         total_count_pos = len(final_analysis_df)
         agree_percent_pos = round((agree_count_pos / total_count_pos) * 100) if total_count_pos > 0 else 0
