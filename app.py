@@ -10,37 +10,23 @@ def load_data(url):
     try:
         df = pd.read_csv(url)
         
-        # 🟢 HATA DÜZELTME: Sütun isimlerinin başındaki ve sonundaki boşlukları temizle
+        # 🟢 GİZLİ BOŞLUKLARI TEMİZLEME VE İSİM KONTROLÜ
         df.columns = df.columns.str.strip() 
         
-        # 'Zaman Damgası' sütununu atıyoruz (Kullanıcı İsteği)
-        if 'Zaman Damgası' in df.columns:
-            df = df.drop(columns=['Zaman Damgası'])
+        if 'Zaman damgası' in df.columns:
+            df = df.drop(columns=['Zaman damgası'])
             
         return df
     except Exception:
         return pd.DataFrame()
 
-# --- 2. TASARIM (CSS ENJEKSİYONU) ---
-# ... (CSS KODU AYNI KALIYOR)
+# 2. TASARIM KODLARI (Aynı)
 st.set_page_config(page_title="VARCast - Pozisyon Analiz", layout="wide", page_icon="⚽")
-
 st.markdown("""
 <style>
-    /* Tailwind renklerini Streamlit'e taşıma */
-    .stApp {
-        background-color: #0E0E11; 
-        color: #EAEAEA; 
-        font-family: Arial, sans-serif; 
-    }
-    .stContainer, .css-fg4ri0 { 
-        background: rgba(17,17,19,0.6); 
-        backdrop-filter: blur(6px); 
-        border-radius: 1rem;
-        border: 1px solid rgba(34,34,40, 0.5); 
-        padding: 2rem;
-        margin-bottom: 1rem;
-    }
+    /* ... (CSS KODU AYNI KALIYOR) ... */
+    .stApp { background-color: #0E0E11; color: #EAEAEA; font-family: Arial, sans-serif; }
+    .stContainer, .css-fg4ri0 { background: rgba(17,17,19,0.6); backdrop-filter: blur(6px); border-radius: 1rem; border: 1px solid rgba(34,34,40, 0.5); padding: 2rem; margin-bottom: 1rem; }
     h1, h2, h3 { color: #FFFFFF; font-weight: 600; text-align: center; }
     .correct-badge { background-color: #38a169 !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
     .wrong-badge { background-color: #E53E3E !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
@@ -55,16 +41,12 @@ df = load_data(G_SHEET_URL)
 
 if df.empty:
     st.error("Veri yüklenemedi. Lütfen Google Sheets bağlantısını kontrol edin.")
-    # DEBUG KISMI: Hata devam ederse kullanıcıya sütunları gösterelim
-    st.markdown("---")
-    st.markdown("⚠️ **DEBUG NOT:** Lütfen E-Tablonun 'Herkese Açık' olduğundan ve doğru sütun adını kullandığınızdan emin olun.")
     st.stop()
 
 
-# 4. POZİSYON SEÇİMİ 
-# 'Maç ve Olayı Açıklayın' sütununu şimdi temizlenmiş haliyle kullanıyoruz.
+# 4. POZİSYON SEÇİMİ (ŞİMDİ 'Olay' SÜTUNUNU KULLANIYORUZ)
 try:
-    position_column_name = 'Maç ve Olayı Açıklayın'
+    position_column_name = 'Olay' # 👈 Düzeltme yapıldı
     position_list = df[position_column_name].unique().tolist()
     default_position = position_list[0] if position_list else 'Veri Yok'
     
@@ -77,21 +59,18 @@ try:
     )
     
 except KeyError:
-    # Eğer hata hala devam ediyorsa, sütun ismi farklı demektir.
-    st.error(f"Hata: Kodda aranan '{position_column_name}' sütunu, E-Tabloda bulunamıyor.")
-    st.markdown("---")
-    st.subheader("E-Tablodaki Mevcut Sütun İsimleri:")
-    st.code(df.columns.tolist())
-    st.markdown("Lütfen yukarıdaki listeden doğru ismi alıp koda yapıştırın.")
+    # Bu hata gelirse, 'Olay' sütununu da yanlış girmişsin demektir.
+    st.error("Çok kritik bir hata: 'Olay' sütunu da bulunamıyor. Lütfen E-Tablonuzdaki pozisyon başlığı sütun adını tekrar kontrol edin.")
     st.stop()
 
 
 # Seçilen pozisyona ait tüm yorumcu kayıtlarını filtrele
 current_analysis_df = df[df[position_column_name] == selected_position]
 
-# Hakem kararını al
-ref_decision = current_analysis_df['Hakem Kararı neydi?'].iloc[0] if not current_analysis_df.empty else 'Belirtilmemiş'
-ref_explanation = current_analysis_df['Analiz Notları'].iloc[0] if 'Analiz Notları' in df.columns and not current_analysis_df.empty else 'Gerekçe mevcut değil.'
+# Hakem kararını al (ŞİMDİ 'Hakem Karar' SÜTUNUNU KULLANIYORUZ)
+ref_decision = current_analysis_df['Hakem Karar'].iloc[0] if not current_analysis_df.empty else 'Belirtilmemiş'
+ref_explanation = current_analysis_df['Yorum'].iloc[0] if 'Yorum' in df.columns and not current_analysis_df.empty else 'Gerekçe/Analiz notu mevcut değil.' # 'Yorum' sütununu gerekçe olarak kullandık
+
 
 # 5. LAYOUT: 3 sütunlu düzeni kur
 col_list = st.columns([1, 2, 1])
@@ -101,14 +80,16 @@ with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
     st.markdown(f"<div class='neutral-badge'>Toplam Kayıt: {len(current_analysis_df)}</div>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Pozisyon Notları")
+    st.subheader("Analiz Notu")
     st.markdown(f"<p class='text-sm opacity-80'>{ref_explanation[:200]}...</p>", unsafe_allow_html=True)
 
 
-# --- ORTA SÜTUN (GÖRSEL VE KARAR) ---
+# --- ORTA SÜTUN (KARAR VE İSTATİSTİK) ---
 with col_list[1]:
     with st.container(border=True): 
         st.markdown(f"## 🛎️ Hakem Kararı: {ref_decision}")
+        
+        # Karar etiketi
         badge_class = 'neutral-badge'
         if ref_decision in ['Penaltı', 'Kırmızı Kart']: badge_class = 'wrong-badge'
         if ref_decision in ['Devam', 'Aut']: badge_class = 'correct-badge'
@@ -116,8 +97,9 @@ with col_list[1]:
         st.markdown(f"<div class='{badge_class}'>{ref_decision.upper()}</div>", unsafe_allow_html=True)
         st.markdown(f"<p class='text-sm opacity-80 mt-3'>Gerekçe: {ref_explanation}</p>", unsafe_allow_html=True)
 
-        # İstatistik Barı Hesaplama
-        agree_count = current_analysis_df[current_analysis_df['Yorumcu Hakemle Aynı Fikirde Miydi?'] == 'Evet'].shape[0]
+        # İstatistik Barı Hesaplama (ŞİMDİ '6. sütun' KULLANIYORUZ)
+        # Assuming '6. sütun' contains 'Evet' veya 'Hayır'
+        agree_count = current_analysis_df[current_analysis_df['6. sütun'] == 'Evet'].shape[0]
         total = len(current_analysis_df)
         agree_percent = round((agree_count / total) * 100) if total > 0 else 0
 
@@ -131,9 +113,10 @@ with col_list[2]:
     
     if not current_analysis_df.empty:
         for index, row in current_analysis_df.iterrows():
-            name = row.get('Yorumcu Adı', 'Anonim')
-            opinion_text = row.get('Yorumcu kararı neydi?', 'Görüş belirtilmemiş.')
-            agreed = row.get('Yorumcu Hakemle Aynı Fikirde Miydi?', 'Bilinmiyor') == 'Evet'
+            # SÜTUN İSİMLERİ DÜZELTİLDİ: 'Yorumcu' ve '6. sütun'
+            name = row.get('Yorumcu', 'Anonim')
+            opinion_text = row.get('Yorum', 'Görüş belirtilmemiş.')
+            agreed = row.get('6. sütun', 'Bilinmiyor') == 'Evet'
             
             status_emoji = '✅' if agreed else '❌'
             status_class = 'stSuccess' if agreed else 'stError'
