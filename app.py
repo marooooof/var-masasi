@@ -101,10 +101,12 @@ st.markdown("""
         overflow: hidden;
         padding-bottom: 20px;
     }
+    /* Resimlerin tam oturmasını sağlayan kısım burası */
     .image-container {
         position: relative;
         width: 100%; height: 320px;
-        background-size: cover; background-position: center;
+        background-size: cover;       /* Alanı doldur */
+        background-position: center;  /* Ortala */
     }
     .floating-badge {
         position: absolute; top: 20px; left: 20px;
@@ -169,7 +171,7 @@ with c2:
     with col_search:
         search_query = st.text_input("ara", placeholder="Pozisyon ara...", label_visibility="collapsed")
 
-# --- GRID YAPISI (SAYFAYI 3'E BÖLEN KISIM BURASI) ---
+# --- GRID YAPISI ---
 col_left, col_center, col_right = st.columns([3, 6, 3])
 
 # ================= SOL KOLON: LİSTE =================
@@ -213,6 +215,7 @@ with col_center:
         if custom_image != '-' and custom_image.startswith('http'):
             main_image_url = custom_image
         else:
+            # Varsayılan stadyum görseli
             main_image_url = "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80"
         # ---------------------
 
@@ -297,20 +300,3 @@ with col_right:
 </div>
 """
             st.markdown(commentator_html, unsafe_allow_html=True)
-
-# --- HATA AYIKLAMA (DEBUG) ---
-st.write("--- DEBUG MODU AÇIK ---")
-st.write("Tablodaki Sütun İsimleri:", df.columns.tolist())
-
-if st.session_state.selected_pos_name:
-    secili_satir = df[df['Olay'] == st.session_state.selected_pos_name]
-    st.write(f"Seçilen Olay: {st.session_state.selected_pos_name}")
-    
-    # Görsel sütununda ne var bakalım
-    if 'Görsel' in df.columns:
-        deger = secili_satir['Görsel'].iloc[0]
-        st.write(f"Görsel Sütunundaki Değer: '{deger}'")
-        st.write(f"Link geçerli mi?: {str(deger).startswith('http')}")
-    else:
-        st.error("HATA: 'Görsel' adında bir sütun bulunamadı! Sütun ismini kontrol et.")
-st.write("--- DEBUG BİTTİ ---")
