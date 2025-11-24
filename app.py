@@ -1,86 +1,68 @@
 import streamlit as st
+import pandas as pd # Veriyi okumak için Pandas'ı kullanıyoruz
 
-# 1. Sayfa Ayarları
-st.set_page_config(page_title="VAR Masası", page_icon="⚽", layout="centered")
+# 1. Sayfa Ayarları ve Tema
+st.set_page_config(page_title="VAR Masası - Anket Sonuçları", page_icon="📝", layout="wide")
 
-# 2. TASARIM KODLARI (Sade ve Şık - Apple Tarzı)
+# Google Sheets'ten veriyi çekeceğimiz URL.
+# Bu link, senin Form yanıtlarının düştüğü E-Tablonun CSV formatındaki dışa aktarım linkidir.
+# E-Tablo ID'si: 10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug
+# Sayfa ID'si (GID): 82638230
+G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
+
+# Streamlit Cache özelliği: Veri değişmedikçe her seferinde Google'dan tekrar çekmez.
+@st.cache_data(ttl=60) # 1 dakikada bir (60 saniye) güncellensin ki anket sonuçları hızlı düşsün.
+def load_data(url):
+    try:
+        # URL'den veriyi oku ve Pandas DataFrame'e çevir
+        df = pd.read_csv(url)
+        return df
+    except Exception as e:
+        # Hata olursa boş bir DataFrame döndür
+        st.error(f"Veri yüklenirken bir hata oluştu. E-Tablonun 'Herkese Açık' olduğundan emin olun.")
+        return pd.DataFrame()
+
+# 2. TASARIM KODLARI (Apple Sadeliği)
 st.markdown("""
 <style>
-    /* Arka plan ve genel renkler */
-    .stApp {
-        background-color: #ffffff;
-        color: #333333;
-    }
-    
-    /* Başlıklar */
-    h1, h2, h3 {
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        color: #1d1d1f;
-        font-weight: 600;
-        text-align: center; /* Başlığı ortala */
-    }
-
-    /* Video Link Kutusu */
-    .stTextInput>div>div>input {
+    .stApp { background-color: #ffffff; color: #333; }
+    h1, h2, h3 { font-family: 'Helvetica Neue', sans-serif; color: #1d1d1f; text-align: center; }
+    /* Tablo stili */
+    .stDataFrame {
         border-radius: 12px;
-        border: 1px solid #d2d2d7;
-        padding: 12px;
-        background-color: #f5f5f7;
-        color: #333;
-        font-size: 16px;
-    }
-
-    /* Analiz Butonu (Mavi Hap) */
-    .stButton>button {
-        background-color: #0071e3;
-        color: white;
-        border-radius: 980px;
-        border: none;
-        padding: 12px 30px;
-        font-size: 16px;
-        font-weight: 500;
-        width: 100%; /* Buton tüm satırı kaplasın */
-        margin-top: 10px;
-    }
-
-    /* Buton efekti */
-    .stButton>button:hover {
-        background-color: #0077ed;
-        transform: scale(1.01);
-        box-shadow: 0 4px 12px rgba(0,113,227,0.3);
-    }
-    
-    /* Bilgi mesajları kutusu */
-    .stInfo {
-        background-color: #f2f2f7;
-        color: #1d1d1f;
-        border: none;
-        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 3. EKRAN İÇERİĞİ (Herkes Burayı Görür)
+# 3. VERİYİ YÜKLE VE GÖSTER
+df = load_data(G_SHEET_URL)
 
-# Üst Başlık
-st.title("⚽ VAR Kontrol Merkezi")
-st.markdown("<p style='text-align: center; color: #86868b;'>Futbol analiz ve yorumcu özet sistemi</p>", unsafe_allow_html=True)
-
+st.title("📝 VAR Masası - Canlı Anket Sonuçları")
+st.markdown("<p style='text-align: center; color: #86868b;'>Google Form yanıtları otomatik olarak burada gösteriliyor.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Giriş Alanı
-col1, col2, col3 = st.columns([1, 10, 1]) # Ortalamak için boşluklu sütunlar
-with col2:
-    st.info("💡 **Nasıl Kullanılır:** YouTube video linkini aşağıya yapıştırın ve analizi başlatın.")
+# Veri yükleme başarılıysa
+if not df.empty:
     
-    video_link = st.text_input("Video Linki", placeholder="https://youtube.com/watch?v=...")
+    # Anket sonuçlarını daha güzel göstermek için DataFrame'i kullanıyoruz:
     
-    if st.button("Analizi Başlat"):
-        if video_link:
-            st.success(f"Video işleniyor... (Simülasyon): {video_link}")
-            # Buraya ileride yapay zeka kodumuz gelecek
-        else:
-            st.warning("Lütfen önce bir link yapıştırın.")
+    # 1. Anketin Başlıkları (Soru Başlıkları)
+    st.subheader("📋 Toplanan Ham Veri")
+    st.info(f"Toplam **{len(df)}** kişi ankete katıldı. Son güncelleme: {pd.Timestamp.now().strftime('%H:%M:%S')}")
+    
+    # 2. Veri Tablosu
+    st.dataframe(
+        df, 
+        use_container_width=True, 
+        hide_index=True 
+    )
 
-st.markdown("---")
-st.markdown("<p style='text-align: center; font-size: 12px; color: #d2d2d7;'>Powered by Gemini AI</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # (Opsiyonel) Eğer istersen, en çok oy alan seçeneği falan burada gösterebiliriz.
+    
+    st.markdown("<p style='text-align: center; color: #d2d2d7;'>Sonuçlar 1 dakikada bir otomatik güncellenmektedir.</p>", unsafe_allow_html=True)
+
+else:
+    st.error("Veri tablosu yüklenemiyor. Lütfen Google E-Tablonun 'Herkese Açık' olduğundan emin olun.")
