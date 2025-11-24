@@ -193,8 +193,9 @@ with col_left:
                  </style>
                  """, unsafe_allow_html=True)
 
-            # Butona basılırsa state'i güncelle
-            if st.button(event, key=f"btn_{event}", use_container_width=True, label=event):
+            # --- DÜZELTME BURADA ---
+            # label=event kısmını sildim, sadece 'event' yeterli.
+            if st.button(event, key=f"btn_{event}", use_container_width=True):
                 st.session_state.selected_pos_name = event
                 st.rerun()
                 
@@ -232,7 +233,7 @@ with col_center:
             
             <div style="padding: 25px;">
                 <div class="decision-badge {badge_cls}">
-                    <span>{badge_icon}</span> {str(ref_decision).toUpperCase()}
+                    <span>{badge_icon}</span> {str(ref_decision).upper()}
                 </div>
                 
                 <h2 style="margin-bottom: 15px;">Hakem Kararı</h2>
