@@ -1,23 +1,33 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 # --- 1. FONKSİYONLAR VE VERİ ---
 
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
+# Emniyet Fonksiyonu: Sütun yoksa hata vermez, 'Belirtilmemiş' döner.
+def safe_get(df, column_name, default='Belirtilmemiş'):
+    if df.empty or column_name not in df.columns:
+        return default
+    # Eğer filtreleme sonucu boş dönmediyse (IndexError'ı engeller)
+    if df.shape[0] > 0:
+        return df[column_name].iloc[0]
+    return default
+
 @st.cache_data(ttl=60)
 def load_data(url):
     try:
         df = pd.read_csv(url)
-        
-        # 🟢 GİZLİ BOŞLUKLARI TEMİZLEME VE İSİM KONTROLÜ
+        # 🟢 GİZLİ BOŞLUKLARI TEMİZLEME (BU ÇOK ÖNEMLİ)
         df.columns = df.columns.str.strip() 
         
         if 'Zaman damgası' in df.columns:
             df = df.drop(columns=['Zaman damgası'])
             
         return df
-    except Exception:
+    except Exception as e:
+        st.error(f"Veri yüklenirken kritik bir hata oluştu: {e}")
         return pd.DataFrame()
 
 # 2. TASARIM KODLARI (Aynı)
@@ -40,13 +50,14 @@ st.markdown("""
 df = load_data(G_SHEET_URL)
 
 if df.empty:
-    st.error("Veri yüklenemedi. Lütfen Google Sheets bağlantısını kontrol edin.")
+    st.error("Veri yüklenemedi. Uygulama çökmesini engelledik, ancak veri boş.")
     st.stop()
 
 
-# 4. POZİSYON SEÇİMİ (ŞİMDİ 'Olay' SÜTUNUNU KULLANIYORUZ)
+# 4. POZİSYON SEÇİMİ 
+position_column_name = 'Olay' # Kullanılacak Sütun Adı
+
 try:
-    position_column_name = 'Olay' # 👈 Düzeltme yapıldı
     position_list = df[position_column_name].unique().tolist()
     default_position = position_list[0] if position_list else 'Veri Yok'
     
@@ -59,23 +70,22 @@ try:
     )
     
 except KeyError:
-    # Bu hata gelirse, 'Olay' sütununu da yanlış girmişsin demektir.
-    st.error("Çok kritik bir hata: 'Olay' sütunu da bulunamıyor. Lütfen E-Tablonuzdaki pozisyon başlığı sütun adını tekrar kontrol edin.")
+    st.error(f"KOD SALDIRISI ENGELLENDİ: '{position_column_name}' sütunu yok. Lütfen kodu düzenleyin.")
+    st.code(df.columns.tolist()) # Hata mesajı yerine sütunları göster
     st.stop()
 
 
 # Seçilen pozisyona ait tüm yorumcu kayıtlarını filtrele
 current_analysis_df = df[df[position_column_name] == selected_position]
 
-# Hakem kararını al (ŞİMDİ 'Hakem Karar' SÜTUNUNU KULLANIYORUZ)
-ref_decision = current_analysis_df['Hakem Karar'].iloc[0] if not current_analysis_df.empty else 'Belirtilmemiş'
-ref_explanation = current_analysis_df['Yorum'].iloc[0] if 'Yorum' in df.columns and not current_analysis_df.empty else 'Gerekçe/Analiz notu mevcut değil.' # 'Yorum' sütununu gerekçe olarak kullandık
-
+# Hakem kararını al (ŞİMDİ safe_get KULLANIYORUZ)
+ref_decision = safe_get(current_analysis_df, 'Hakem Karar') 
+ref_explanation = safe_get(current_analysis_df, 'Yorum')
 
 # 5. LAYOUT: 3 sütunlu düzeni kur
 col_list = st.columns([1, 2, 1])
 
-# --- SOL SÜTUN (KODDA DİĞER KISIMLAR DEĞİŞMİYOR) ---
+# --- SOL SÜTUN ---
 with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
     st.markdown(f"<div class='neutral-badge'>Toplam Kayıt: {len(current_analysis_df)}</div>", unsafe_allow_html=True)
@@ -97,8 +107,7 @@ with col_list[1]:
         st.markdown(f"<div class='{badge_class}'>{ref_decision.upper()}</div>", unsafe_allow_html=True)
         st.markdown(f"<p class='text-sm opacity-80 mt-3'>Gerekçe: {ref_explanation}</p>", unsafe_allow_html=True)
 
-        # İstatistik Barı Hesaplama (ŞİMDİ '6. sütun' KULLANIYORUZ)
-        # Assuming '6. sütun' contains 'Evet' veya 'Hayır'
+        # İstatistik Barı Hesaplama
         agree_count = current_analysis_df[current_analysis_df['6. sütun'] == 'Evet'].shape[0]
         total = len(current_analysis_df)
         agree_percent = round((agree_count / total) * 100) if total > 0 else 0
@@ -113,7 +122,7 @@ with col_list[2]:
     
     if not current_analysis_df.empty:
         for index, row in current_analysis_df.iterrows():
-            # SÜTUN İSİMLERİ DÜZELTİLDİ: 'Yorumcu' ve '6. sütun'
+            # SÜTUN İSİMLERİ safe_get olmadığı için manuel kontrol ediliyor
             name = row.get('Yorumcu', 'Anonim')
             opinion_text = row.get('Yorum', 'Görüş belirtilmemiş.')
             agreed = row.get('6. sütun', 'Bilinmiyor') == 'Evet'
