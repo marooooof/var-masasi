@@ -2,17 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# --- 1. FONKSİYONLAR VE VERİ ---
+# --- 1. FONKSİYONLAR VE VERİ (AYNI KALIYOR) ---
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
-# Emniyet Fonksiyonları (safe_get ve load_data aynı kalıyor)
 def safe_get(df, column_name, default='Gerekçe/Analiz notu mevcut değil.'):
     if df.empty or column_name not in df.columns or df.shape[0] == 0:
         return default
-    
     value = df[column_name].iloc[0]
-    if pd.isna(value): # Boş (NaN) kontrolü
-        return default
+    if pd.isna(value): return default
     return str(value)
 
 @st.cache_data(ttl=60)
@@ -20,25 +17,68 @@ def load_data(url):
     try:
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip() 
-        if 'Zaman damgası' in df.columns:
-            df = df.drop(columns=['Zaman damgası'])
+        if 'Zaman damgası' in df.columns: df = df.drop(columns=['Zaman damgası'])
         return df
-    except Exception:
-        return pd.DataFrame()
+    except Exception: return pd.DataFrame()
 
-# 2. TASARIM KODLARI
+# 2. TASARIM KODLARI (PREMIER LEAGUE MOR VURGU)
 st.set_page_config(page_title="VARCast - Gelişmiş Analiz", layout="wide", page_icon="⚽")
+
+# --- YENİ CSS: KOYU MOR ZEMİN + PL VURGUSU ---
 st.markdown("""
 <style>
-    .stApp { background-color: #0E0E11; color: #EAEAEA; font-family: Arial, sans-serif; }
-    .stContainer, .css-fg4ri0 { background: rgba(17,17,19,0.6); backdrop-filter: blur(6px); border-radius: 1rem; border: 1px solid rgba(34,34,40, 0.5); padding: 2rem; margin-bottom: 1rem; }
-    h1, h2, h3 { color: #FFFFFF; font-weight: 600; text-align: center; }
-    .correct-badge { background-color: #38a169 !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
-    .wrong-badge { background-color: #E53E3E !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
-    .commentator-card { 
-        background-color: #121217; border-radius: 8px; padding: 12px; border: 1px solid #1A1A1F; margin-bottom: 10px;
-        display: flex; flex-direction: column; gap: 5px;
+    /* Temel PL Renkleri */
+    :root {
+        --pl-purple: #4A0082; /* PL Logosu Moru */
+        --pl-cyan: #00FFFF;   /* Vurgu Turkuazı */
+        --pl-dark-base: #12121E; /* Çok Koyu Mor/Mavi Zemin */
+        --pl-card-bg: #1B1B2B;  /* Kart Arka Planı */
     }
+
+    /* Genel Arka Plan */
+    .stApp {
+        background-color: var(--pl-dark-base); 
+        color: #EAEAEA; 
+        font-family: Arial, sans-serif; 
+    }
+    
+    /* Ana Konteynerlerin Stili (Glass/Card Efekti) */
+    .stContainer, .css-fg4ri0 { 
+        background: rgba(27,27,43,0.7); /* Karta hafif şeffaflık */
+        backdrop-filter: blur(6px); 
+        border-radius: 1rem;
+        border: 1px solid rgba(74, 0, 130, 0.5); /* Mor çerçeve */
+        padding: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Başlıklar */
+    h1, h2, h3 { color: #FFFFFF; font-weight: 700; text-align: center; }
+    
+    /* Başarılı (Yeşil) / Başarısız (Kırmızı) */
+    .correct-badge { background-color: #38A169 !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
+    .wrong-badge { background-color: #E53E3E !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
+    .neutral-badge { background-color: var(--pl-purple); color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
+
+    /* Yorumcu Kartları */
+    .commentator-card {
+        background-color: var(--pl-card-bg); 
+        border-radius: 8px;
+        padding: 12px;
+        border: 1px solid #333344;
+        margin-bottom: 10px;
+        color: #FFFFFF;
+        /* Yorumcu Adı Vurgusu */
+        div:first-child { color: var(--pl-cyan); }
+    }
+    
+    /* Seçim Kutusu Vurgusu (Selectbox) */
+    .stSelectbox>div>div>div>div {
+        background-color: #2D2D44;
+        border: 1px solid var(--pl-purple);
+        color: #EAEAEA;
+    }
+    
 </style>
 """, unsafe_allow_html=True)
 
@@ -52,28 +92,19 @@ if df.empty:
     st.stop()
 
 
-# Maç Adı sütununu takımlara ayırma (Bu fonksiyon NaN değerleri görmezden gelir)
+# 4. TÜM LİSTELERİ OLUŞTURMA (NaN/TypeError Düzeltmeleri Uygulandı)
 def extract_teams(match_name):
     try:
-        # Maç Adı'nın NaN olmadığını kontrol et
-        if pd.isna(match_name):
-            return []
+        if pd.isna(match_name): return []
         teams = [team.strip() for team in str(match_name).split('-')]
         return teams
-    except:
-        return []
+    except: return []
 
-# 4. TÜM LİSTELERİ OLUŞTURMA (NaN/TypeError Düzeltmeleri Uygulandı)
 all_teams = set()
-# Maç Adı sütunundaki boş satırları atıyoruz (dropna())
 for match in df['Maç Adı'].dropna().unique(): 
     for team in extract_teams(match):
-        if team:
-            all_teams.add(team)
-
+        if team: all_teams.add(team)
 all_teams = sorted(list(all_teams))
-
-# 🟢 HATA ÇÖZÜMÜ: Yorumcu ve Hakem listelerini oluştururken boş (NaN) değerleri at
 all_commentators = sorted(df['Yorumcu'].dropna().unique().tolist()) 
 all_referees = sorted(df['Hakem'].dropna().unique().tolist())
 
@@ -109,15 +140,12 @@ with filter_cols[2]:
 # 6. KADEMELİ FİLTRELEME MANTIĞI
 filtered_df = df.copy()
 
-# 1. Takım Filtresi
 if selected_team != 'Tümü':
     filtered_df = filtered_df[filtered_df['Maç Adı'].apply(lambda x: selected_team in extract_teams(x))]
 
-# 2. Yorumcu Filtresi
 if selected_commentator != 'Tümü':
     filtered_df = filtered_df[filtered_df['Yorumcu'] == selected_commentator]
 
-# 3. Hakem Filtresi
 if selected_referee != 'Tümü':
     filtered_df = filtered_df[filtered_df['Hakem'] == selected_referee]
 
@@ -154,7 +182,7 @@ ref_explanation = safe_get(final_analysis_df, 'Yorum')
 st.markdown("---")
 col_list = st.columns([1, 2, 1])
 
-# --- SOL SÜTUN (ANALİZ NOTU) ---
+# --- SOL SÜTUN (ANALİZ NOTU VE GENEL ORAN) ---
 with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
     st.markdown(f"<div class='neutral-badge'>Toplam Yorumcu Kaydı: {len(final_analysis_df)}</div>", unsafe_allow_html=True)
@@ -178,6 +206,7 @@ with col_list[1]:
     with st.container(border=True): 
         st.markdown(f"## 🛎️ Hakem Kararı: {ref_decision}")
         
+        # Karar etiketi
         badge_class = 'neutral-badge'
         if ref_decision in ['Penaltı', 'Kırmızı Kart']: badge_class = 'wrong-badge'
         if ref_decision in ['Devam', 'Aut']: badge_class = 'correct-badge'
@@ -210,7 +239,7 @@ with col_list[2]:
             st.markdown(
                 f"""
                 <div class='commentator-card'>
-                    <div style='font-weight: 600; color: #4299e1;'>{name}</div>
+                    <div style='font-weight: 600; color: var(--pl-cyan);'>{name}</div>
                     <div>Yorum: {opinion_text}</div>
                     <div style='font-weight: 700;'>Hakemle Aynı Fikirde: {status_emoji}</div>
                 </div>
