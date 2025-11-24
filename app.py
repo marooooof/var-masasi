@@ -6,28 +6,30 @@ import numpy as np
 
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
-# Emniyet Fonksiyonu: Sütun yoksa hata vermez, 'Belirtilmemiş' döner.
-def safe_get(df, column_name, default='Belirtilmemiş'):
-    if df.empty or column_name not in df.columns:
+# Yeni ve Güçlendirilmiş Emniyet Fonksiyonu: Boş (NaN) değerleri stringe çevirir.
+def safe_get(df, column_name, default='Gerekçe/Analiz notu mevcut değil.'):
+    if df.empty or column_name not in df.columns or df.shape[0] == 0:
         return default
-    # Eğer filtreleme sonucu boş dönmediyse (IndexError'ı engeller)
-    if df.shape[0] > 0:
-        return df[column_name].iloc[0]
-    return default
+    
+    value = df[column_name].iloc[0]
+    
+    # 🚨 KRİTİK DÜZELTME: Eğer değer boş (NaN) ise, varsayılan metni döndür.
+    if pd.isna(value):
+        return default
+        
+    return str(value)
 
 @st.cache_data(ttl=60)
 def load_data(url):
     try:
         df = pd.read_csv(url)
-        # 🟢 GİZLİ BOŞLUKLARI TEMİZLEME (BU ÇOK ÖNEMLİ)
         df.columns = df.columns.str.strip() 
         
         if 'Zaman damgası' in df.columns:
             df = df.drop(columns=['Zaman damgası'])
             
         return df
-    except Exception as e:
-        st.error(f"Veri yüklenirken kritik bir hata oluştu: {e}")
+    except Exception:
         return pd.DataFrame()
 
 # 2. TASARIM KODLARI (Aynı)
@@ -55,7 +57,7 @@ if df.empty:
 
 
 # 4. POZİSYON SEÇİMİ 
-position_column_name = 'Olay' # Kullanılacak Sütun Adı
+position_column_name = 'Olay' 
 
 try:
     position_list = df[position_column_name].unique().tolist()
@@ -70,27 +72,28 @@ try:
     )
     
 except KeyError:
-    st.error(f"KOD SALDIRISI ENGELLENDİ: '{position_column_name}' sütunu yok. Lütfen kodu düzenleyin.")
-    st.code(df.columns.tolist()) # Hata mesajı yerine sütunları göster
+    st.error("KOD SALDIRISI ENGELLENDİ: 'Olay' sütunu yok. Lütfen E-Tablonuzdaki pozisyon başlığı sütun adını tekrar kontrol edin.")
     st.stop()
 
 
 # Seçilen pozisyona ait tüm yorumcu kayıtlarını filtrele
 current_analysis_df = df[df[position_column_name] == selected_position]
 
-# Hakem kararını al (ŞİMDİ safe_get KULLANIYORUZ)
-ref_decision = safe_get(current_analysis_df, 'Hakem Karar') 
-ref_explanation = safe_get(current_analysis_df, 'Yorum')
+# Hakem kararını al (ŞİMDİ safe_get KULLANIYORUZ - nan hatası artık yok)
+ref_decision = safe_get(current_analysis_df, 'Hakem Karar', default='Karar Girilmemiş') 
+ref_explanation = safe_get(current_analysis_df, 'Yorum') # Yorum sütununu gerekçe/analiz notu olarak kullandık
 
 # 5. LAYOUT: 3 sütunlu düzeni kur
 col_list = st.columns([1, 2, 1])
 
-# --- SOL SÜTUN ---
+# --- SOL SÜTUN (HATANIN KAYNAĞI BURASIYDI) ---
 with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
     st.markdown(f"<div class='neutral-badge'>Toplam Kayıt: {len(current_analysis_df)}</div>", unsafe_allow_html=True)
     st.markdown("---")
     st.subheader("Analiz Notu")
+    
+    # 🚨 DÜZELTME YAPILDI: ref_explanation artık her zaman string, dilimleme hatası vermeyecek.
     st.markdown(f"<p class='text-sm opacity-80'>{ref_explanation[:200]}...</p>", unsafe_allow_html=True)
 
 
@@ -122,7 +125,7 @@ with col_list[2]:
     
     if not current_analysis_df.empty:
         for index, row in current_analysis_df.iterrows():
-            # SÜTUN İSİMLERİ safe_get olmadığı için manuel kontrol ediliyor
+            # SÜTUN İSİMLERİ kontrol edildi ve kullanıldı
             name = row.get('Yorumcu', 'Anonim')
             opinion_text = row.get('Yorum', 'Görüş belirtilmemiş.')
             agreed = row.get('6. sütun', 'Bilinmiyor') == 'Evet'
