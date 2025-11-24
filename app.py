@@ -297,3 +297,20 @@ with col_right:
 </div>
 """
             st.markdown(commentator_html, unsafe_allow_html=True)
+
+# --- HATA AYIKLAMA (DEBUG) ---
+st.write("--- DEBUG MODU AÇIK ---")
+st.write("Tablodaki Sütun İsimleri:", df.columns.tolist())
+
+if st.session_state.selected_pos_name:
+    secili_satir = df[df['Olay'] == st.session_state.selected_pos_name]
+    st.write(f"Seçilen Olay: {st.session_state.selected_pos_name}")
+    
+    # Görsel sütununda ne var bakalım
+    if 'Görsel' in df.columns:
+        deger = secili_satir['Görsel'].iloc[0]
+        st.write(f"Görsel Sütunundaki Değer: '{deger}'")
+        st.write(f"Link geçerli mi?: {str(deger).startswith('http')}")
+    else:
+        st.error("HATA: 'Görsel' adında bir sütun bulunamadı! Sütun ismini kontrol et.")
+st.write("--- DEBUG BİTTİ ---")
