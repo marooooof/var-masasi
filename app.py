@@ -1,75 +1,53 @@
 import streamlit as st
 import pandas as pd
-import numpy as np # Örnek veri oluşturmak için kullanacağız
 
 # --- 1. FONKSİYONLAR VE VERİ ---
 
-# Google Sheets URL'si (Değişmedi)
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
 @st.cache_data(ttl=60)
 def load_data(url):
     try:
         df = pd.read_csv(url)
+        
+        # 🟢 HATA DÜZELTME: Sütun isimlerinin başındaki ve sonundaki boşlukları temizle
+        df.columns = df.columns.str.strip() 
+        
         # 'Zaman Damgası' sütununu atıyoruz (Kullanıcı İsteği)
         if 'Zaman Damgası' in df.columns:
             df = df.drop(columns=['Zaman Damgası'])
             
-        # Gerekirse veri temizliği: Sütun isimlerini boşluksuz hale getirme
-        df.columns = df.columns.str.strip()
         return df
     except Exception:
         return pd.DataFrame()
 
 # --- 2. TASARIM (CSS ENJEKSİYONU) ---
-# Senin verdiğin renk kodlarına ve dark mode'a uygun CSS
+# ... (CSS KODU AYNI KALIYOR)
 st.set_page_config(page_title="VARCast - Pozisyon Analiz", layout="wide", page_icon="⚽")
 
 st.markdown("""
 <style>
     /* Tailwind renklerini Streamlit'e taşıma */
     .stApp {
-        background-color: #0E0E11; /* Genel arka plan */
-        color: #EAEAEA; /* Yazı rengi */
-        font-family: Arial, sans-serif;
+        background-color: #0E0E11; 
+        color: #EAEAEA; 
+        font-family: Arial, sans-serif; 
     }
-    
-    /* Kartların ve Ana Konteynerlerin Stili (Glass/Card Efekti) */
-    .stContainer, .css-fg4ri0 { /* Streamlit'in ana konteyner ID'leri */
+    .stContainer, .css-fg4ri0 { 
         background: rgba(17,17,19,0.6); 
-        backdrop-filter: blur(6px); /* Glass effect */
+        backdrop-filter: blur(6px); 
         border-radius: 1rem;
-        border: 1px solid rgba(34,34,40, 0.5); /* #222228 */
+        border: 1px solid rgba(34,34,40, 0.5); 
         padding: 2rem;
         margin-bottom: 1rem;
     }
-    
-    /* Başlıklar */
-    h1, h2, h3 { color: #FFFFFF; font-weight: 600; }
-    
-    /* Butonlar/Etiketler (DEVAM/PENALTI) */
-    .correct-badge { background-color: #38A169; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
-    .wrong-badge { background-color: #E53E3E; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
-    .neutral-badge { background-color: #2D3748; color: #EAEAEA; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
-
-    /* Yorumcu Kartları */
-    .commentator-card {
-        background-color: #121217; /* Biraz daha koyu kart arka planı */
-        border-radius: 8px;
-        padding: 12px;
-        border: 1px solid #1A1A1F;
-        margin-bottom: 10px;
-    }
-    
-    /* Sidebar'daki pozisyon arama inputu stili */
-    div[data-testid="stSidebar"] input {
-        background-color: #121217 !important; 
-        border: 1px solid #222228 !important;
-        color: #EAEAEA !important;
-    }
-    
+    h1, h2, h3 { color: #FFFFFF; font-weight: 600; text-align: center; }
+    .correct-badge { background-color: #38a169 !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
+    .wrong-badge { background-color: #E53E3E !important; color: white; padding: 5px 10px; border-radius: 9999px; font-size: 14px; }
+    .commentator-card { background-color: #121217; border-radius: 8px; padding: 12px; border: 1px solid #1A1A1F; margin-bottom: 10px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- 3. ANA UYGULAMA MANTIĞI ---
 
@@ -77,18 +55,19 @@ df = load_data(G_SHEET_URL)
 
 if df.empty:
     st.error("Veri yüklenemedi. Lütfen Google Sheets bağlantısını kontrol edin.")
+    # DEBUG KISMI: Hata devam ederse kullanıcıya sütunları gösterelim
+    st.markdown("---")
+    st.markdown("⚠️ **DEBUG NOT:** Lütfen E-Tablonun 'Herkese Açık' olduğundan ve doğru sütun adını kullandığınızdan emin olun.")
     st.stop()
 
-# 4. POZİSYON SEÇİMİ (HTML'deki listeye Streamlit eşdeğeri)
 
-# Sütun isimlerindeki boşlukları temizlediğimiz için 'Maç ve Olayı Açıklayın' yerine 'MaçveOlayıAçıklayın' kullanacağız.
+# 4. POZİSYON SEÇİMİ 
+# 'Maç ve Olayı Açıklayın' sütununu şimdi temizlenmiş haliyle kullanıyoruz.
 try:
-    position_list = df['Maç ve Olayı Açıklayın'].unique().tolist()
-    
-    # Varsayılan olarak listedeki ilk öğeyi seçelim
+    position_column_name = 'Maç ve Olayı Açıklayın'
+    position_list = df[position_column_name].unique().tolist()
     default_position = position_list[0] if position_list else 'Veri Yok'
     
-    # Pozisyonu seçme kutusu (HTML'deki aside/list yerine)
     selected_position = st.selectbox(
         "🔎 Pozisyonu Seçiniz:", 
         options=position_list, 
@@ -98,42 +77,41 @@ try:
     )
     
 except KeyError:
-    st.error("Hata: Veri tablosunda 'Maç ve Olayı Açıklayın' sütunu bulunamadı.")
+    # Eğer hata hala devam ediyorsa, sütun ismi farklı demektir.
+    st.error(f"Hata: Kodda aranan '{position_column_name}' sütunu, E-Tabloda bulunamıyor.")
+    st.markdown("---")
+    st.subheader("E-Tablodaki Mevcut Sütun İsimleri:")
+    st.code(df.columns.tolist())
+    st.markdown("Lütfen yukarıdaki listeden doğru ismi alıp koda yapıştırın.")
     st.stop()
 
+
 # Seçilen pozisyona ait tüm yorumcu kayıtlarını filtrele
-current_analysis_df = df[df['Maç ve Olayı Açıklayın'] == selected_position]
+current_analysis_df = df[df[position_column_name] == selected_position]
 
-# Hakem kararını al (İlk kayıttan alıyoruz, varsayarak aynı pozisyon için aynıdır)
+# Hakem kararını al
 ref_decision = current_analysis_df['Hakem Kararı neydi?'].iloc[0] if not current_analysis_df.empty else 'Belirtilmemiş'
-ref_explanation = current_analysis_df['Analiz Notları'].iloc[0] if 'Analiz Notları' in current_analysis_df.columns and not current_analysis_df.empty else 'Gerekçe mevcut değil.'
+ref_explanation = current_analysis_df['Analiz Notları'].iloc[0] if 'Analiz Notları' in df.columns and not current_analysis_df.empty else 'Gerekçe mevcut değil.'
 
-
-# 5. LAYOUT: HTML'deki gibi 3 sütunlu düzeni kur
+# 5. LAYOUT: 3 sütunlu düzeni kur
 col_list = st.columns([1, 2, 1])
 
-# --- SOL SÜTUN (POZİSYON LİSTESİ) ---
-# Bu alana sadece bir metin bırakıyorum, asıl liste yukarıdaki st.selectbox oldu
+# --- SOL SÜTUN (KODDA DİĞER KISIMLAR DEĞİŞMİYOR) ---
 with col_list[0]:
     st.markdown(f"**Seçilen Pozisyon:** {selected_position}")
     st.markdown(f"<div class='neutral-badge'>Toplam Kayıt: {len(current_analysis_df)}</div>", unsafe_allow_html=True)
     st.markdown("---")
     st.subheader("Pozisyon Notları")
-    # Yorumcu listesi seçili olduğu için buraya bir özet koyalım
     st.markdown(f"<p class='text-sm opacity-80'>{ref_explanation[:200]}...</p>", unsafe_allow_html=True)
 
 
 # --- ORTA SÜTUN (GÖRSEL VE KARAR) ---
 with col_list[1]:
-    
-    # Hakem Kararı Kartı
-    with st.container(border=True): # Streamlit konteyneri ile kart görünümü
+    with st.container(border=True): 
         st.markdown(f"## 🛎️ Hakem Kararı: {ref_decision}")
-        
-        # Karar etiketi
         badge_class = 'neutral-badge'
         if ref_decision in ['Penaltı', 'Kırmızı Kart']: badge_class = 'wrong-badge'
-        if ref_decision in ['Devam', 'Aut']: badge_class = 'correct-badge' # Varsayım
+        if ref_decision in ['Devam', 'Aut']: badge_class = 'correct-badge'
 
         st.markdown(f"<div class='{badge_class}'>{ref_decision.upper()}</div>", unsafe_allow_html=True)
         st.markdown(f"<p class='text-sm opacity-80 mt-3'>Gerekçe: {ref_explanation}</p>", unsafe_allow_html=True)
@@ -145,7 +123,6 @@ with col_list[1]:
 
         st.markdown("---")
         st.markdown(f"**Hakem ile aynı görüşteki yorumcuların oranı:** {agree_percent}%")
-        # Basit bir Streamlit barı
         st.progress(agree_percent)
 
 # --- SAĞ SÜTUN (YORUMCULAR) ---
@@ -154,22 +131,18 @@ with col_list[2]:
     
     if not current_analysis_df.empty:
         for index, row in current_analysis_df.iterrows():
-            # Yorumcu kartı (Custom CSS ile)
             name = row.get('Yorumcu Adı', 'Anonim')
             opinion_text = row.get('Yorumcu kararı neydi?', 'Görüş belirtilmemiş.')
             agreed = row.get('Yorumcu Hakemle Aynı Fikirde Miydi?', 'Bilinmiyor') == 'Evet'
             
-            # Etiket ve renk
             status_emoji = '✅' if agreed else '❌'
             status_class = 'stSuccess' if agreed else 'stError'
             
             st.markdown(
                 f"""
                 <div class='commentator-card'>
-                    <div class='flex justify-between items-center'>
-                        <div style='font-weight: 600; color: #4299e1;'>{name}</div>
-                        <div class='{status_class}'>{status_emoji}</div>
-                    </div>
+                    <div style='font-weight: 600; color: #4299e1;'>{name}</div>
+                    <div class='{status_class}'>{status_emoji}</div>
                     <div class='text-sm opacity-85 mt-2'>{opinion_text}</div>
                 </div>
                 """, unsafe_allow_html=True
