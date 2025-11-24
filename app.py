@@ -208,7 +208,6 @@ with col_center:
         if custom_image != '-' and custom_image.startswith('http'):
             main_image_url = custom_image
         else:
-            # Varsayılan stadyum görseli
             main_image_url = "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80"
         # ---------------------
 
@@ -227,42 +226,39 @@ with col_center:
         total = len(filtered_df)
         percent = round((agree_count/total)*100) if total > 0 else 0
 
+        # HATA DÜZELTME: HTML KODU SOLA YASLANDI (GİRİNTİ YOK)
         html_code = f"""
-<div class="main-card">
-    <div style="position: relative; width: 100%;">
-        <img src="{main_image_url}" style="width: 100%; height: 250px; object-fit: cover; display: block; border-top-left-radius: 20px; border-top-right-radius: 20px;">
-        <div class="floating-badge" style="top: 15px; left: 15px;">Var İncelemesi</div>
-    </div>
-
-    <div style="{badge_style}" class="decision-pill">
-        {icon} {decision_text}
-    </div>
-
-    <div class="content-area">
-        <div class="section-title">Hakem Kararı</div>
-        <div class="desc-text">
-            Ceza sahası içerisinde <b>{match_name}</b> maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
-        </div>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-weight:700; font-size:14px;">Kamuoyu Görüşü</span>
-            <span style="color:#00FF85; font-weight:700;">{percent}%</span>
-        </div>
-        <div class="progress-track">
-            <div class="progress-bar" style="width: {percent}%;"></div>
-        </div>
-        <div class="stat-row">
-            <span>Katılıyor</span>
-            <span>Katılmıyor</span>
-        </div>
-        
-        <div class="analysis-box">
-            <div class="analysis-header">📄 Analiz Notu</div>
-            <div style="font-size:13px; color:#A0A0A0; line-height:1.5;">
-                {ref_note}
-            </div>
-        </div>
-    </div>
+<div class="main-card" style="padding:0; overflow:hidden;">
+<div style="position: relative; width: 100%;">
+<img src="{main_image_url}" style="width: 100%; height: 250px; object-fit: cover; display: block; border-top-left-radius: 20px; border-top-right-radius: 20px;">
+<div class="floating-badge" style="top: 15px; left: 15px;">Var İncelemesi</div>
+</div>
+<div style="{badge_style}" class="decision-pill">
+{icon} {decision_text}
+</div>
+<div class="content-area">
+<div class="section-title">Hakem Kararı</div>
+<div class="desc-text">
+Ceza sahası içerisinde <b>{match_name}</b> maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
+</div>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+<span style="font-weight:700; font-size:14px;">Kamuoyu Görüşü</span>
+<span style="color:#00FF85; font-weight:700;">{percent}%</span>
+</div>
+<div class="progress-track">
+<div class="progress-bar" style="width: {percent}%;"></div>
+</div>
+<div class="stat-row">
+<span>Katılıyor</span>
+<span>Katılmıyor</span>
+</div>
+<div class="analysis-box">
+<div class="analysis-header">📄 Analiz Notu</div>
+<div style="font-size:13px; color:#A0A0A0; line-height:1.5;">
+{ref_note}
+</div>
+</div>
+</div>
 </div>
 """
         st.markdown(html_code, unsafe_allow_html=True)
@@ -287,6 +283,7 @@ with col_right:
             
             avatar_url = f"https://i.pravatar.cc/100?u={index+10}"
 
+            # Yorumcu HTML'i de sola yaslandı
             commentator_html = f"""
 <div class="commentator-card">
 <img src="{avatar_url}" class="avatar">
