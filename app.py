@@ -101,12 +101,6 @@ st.markdown("""
         overflow: hidden;
         padding-bottom: 20px;
     }
-    .image-container {
-        position: relative;
-        width: 100%; 
-        /* Yükseklik otomatik olsun ki resim sığsın */
-        min-height: 200px;
-    }
     .floating-badge {
         position: absolute; top: 20px; left: 20px;
         background-color: #4B0082; color: white;
@@ -120,11 +114,10 @@ st.markdown("""
         display: inline-flex; align-items: center; gap: 8px;
         padding: 10px 24px; border-radius: 99px;
         font-weight: 800; font-size: 14px; text-transform: uppercase;
-        /* Resmi takip etmesi için margin ayarları */
-        margin-top: -30px; margin-left: 25px; position: relative; z-index: 10;
+        margin-top: -45px; margin-left: 25px; position: relative; z-index: 10;
         box-shadow: 0 4px 15px rgba(0, 255, 133, 0.2);
     }
-    .content-area { padding: 25px; padding-top: 10px; }
+    .content-area { padding: 25px; padding-top: 0; margin-top: 15px; }
     .section-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; color: white; }
     .desc-text { font-size: 14px; line-height: 1.6; color: var(--text-muted); margin-bottom: 25px; }
     .progress-track { background: #2A2A2F; height: 8px; border-radius: 99px; width: 100%; margin-top: 10px; }
@@ -236,8 +229,8 @@ with col_center:
 
         html_code = f"""
 <div class="main-card">
-    <div style="position: relative; width: 100%; background-color: #000;">
-        <img src="{main_image_url}" style="width: 100%; height: auto; display: block; border-top-left-radius: 20px; border-top-right-radius: 20px;">
+    <div style="position: relative; width: 100%;">
+        <img src="{main_image_url}" style="width: 100%; height: 250px; object-fit: cover; display: block; border-top-left-radius: 20px; border-top-right-radius: 20px;">
         <div class="floating-badge" style="top: 15px; left: 15px;">Var İncelemesi</div>
     </div>
 
