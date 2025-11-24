@@ -26,7 +26,7 @@ def load_data(url):
 
 df = load_data(G_SHEET_URL)
 
-# Otomatik seçim
+# Otomatik ilk seçimi yap
 if not df.empty and st.session_state.selected_pos_name is None:
     valid_events = df['Olay'].dropna().unique().tolist()
     if valid_events:
@@ -35,7 +35,6 @@ if not df.empty and st.session_state.selected_pos_name is None:
 # --- 2. CSS TASARIM ---
 st.markdown("""
 <style>
-    /* Temel Ayarlar */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     
     :root {
@@ -75,7 +74,7 @@ st.markdown("""
         margin-bottom: 5px;
     }
     div.stButton > button:hover { border-color: var(--accent-green); color: var(--accent-green); }
-    div.stButton > button:focus { background-color: var(--accent-green); color: black; border-color: var(--accent-green); }
+    div.stButton > button:focus { background-color: var(--accent-green) !important; color: black !important; border-color: var(--accent-green) !important; }
 
     /* ORTA ALAN ETİKETLERİ */
     .decision-badge {
@@ -135,7 +134,7 @@ with col_left:
     if not df.empty:
         unique_events = df['Olay'].dropna().unique()
         for event in unique_events:
-            # Tıklanabilir Streamlit Butonu
+            # Butona basılırsa session_state'i güncelle ve sayfayı yenile
             if st.button(event, key=f"btn_{event}", use_container_width=True):
                 st.session_state.selected_pos_name = event
                 st.rerun()
@@ -148,13 +147,11 @@ with col_center:
         selected_pos = st.session_state.selected_pos_name
         filtered_df = df[df['Olay'] == selected_pos]
         
-        # Verileri çek
         ref_decision = safe_get(filtered_df, 'Hakem Karar')
         ref_note = safe_get(filtered_df, 'Yorum')
         match_name = safe_get(filtered_df, 'Maç Adı', 'Bilinmiyor')
         dakika = "Var İncelemesi"
 
-        # Badge Logiği
         badge_cls = "badge-dark-fill"
         badge_icon = "⚖️"
         decision_text = str(ref_decision).upper()
@@ -169,52 +166,47 @@ with col_center:
             badge_cls = "badge-green-fill"
             badge_icon = "▶️"
 
-        # İstatistik
         agree_count = filtered_df[filtered_df['6. sütun'] == 'Evet'].shape[0]
         total = len(filtered_df)
         percent = round((agree_count/total)*100) if total > 0 else 0
 
-        # HTML İÇERİĞİNİ ÖNCE DEĞİŞKENE ATIYORUZ (HATA ÖNLEMEK İÇİN)
+        # ÖNEMLİ DÜZELTME: HTML String'i girintisiz (sola yapışık) olarak oluşturuyoruz.
+        # Bu sayede Streamlit bunu "kod bloğu" sanmayacak.
         html_content = f"""
-        <div class="custom-card" style="padding:0; overflow:hidden; border: none;">
-            <div style="height: 300px; position: relative; background: url('https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80') center/cover;">
-                <div style="position: absolute; top: 15px; left: 15px; background: #6A0CFF; color: white; padding: 5px 15px; border-radius: 999px; font-weight: 700; font-size: 0.8rem;">{dakika}</div>
+<div class="custom-card" style="padding:0; overflow:hidden; border: none;">
+    <div style="height: 300px; position: relative; background: url('https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80') center/cover;">
+        <div style="position: absolute; top: 15px; left: 15px; background: #6A0CFF; color: white; padding: 5px 15px; border-radius: 999px; font-weight: 700; font-size: 0.8rem;">{dakika}</div>
+    </div>
+    <div style="padding: 25px; background-color: var(--card-dark); border: 1px solid #2A2A2F; border-top: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+        <div class="decision-badge {badge_cls}">
+            <span>{badge_icon}</span> {decision_text}
+        </div>
+        <h2 style="margin-bottom: 10px; color: white;">Hakem Kararı</h2>
+        <p style="color: var(--text-white); line-height: 1.6; opacity: 0.9; margin-bottom: 20px;">
+            <b>{match_name}</b> maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
+        </p>
+        <div style="margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px;">
+                <span style="color:var(--text-white)">Kamuoyu Görüşü</span>
+                <span style="color:var(--accent-green);">{percent}%</span>
             </div>
-            
-            <div style="padding: 25px; background-color: var(--card-dark); border: 1px solid #2A2A2F; border-top: none; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <div class="decision-badge {badge_cls}">
-                    <span>{badge_icon}</span> {decision_text}
-                </div>
-                
-                <h2 style="margin-bottom: 10px; color: white;">Hakem Kararı</h2>
-                <p style="color: var(--text-white); line-height: 1.6; opacity: 0.9; margin-bottom: 20px;">
-                    <b>{match_name}</b> maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
-                </p>
-                
-                <div style="margin-bottom: 25px;">
-                    <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px;">
-                        <span style="color:var(--text-white)">Kamuoyu Görüşü</span>
-                        <span style="color:var(--accent-green);">{percent}%</span>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-fill" style="width: {percent}%;"></div>
-                    </div>
-                    <div class="progress-labels">
-                        <span>Katılıyor</span>
-                        <span>Katılmıyor</span>
-                    </div>
-                </div>
-                
-                <div class="note-box">
-                    <div class="note-header">📄 Analiz Notu</div>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin:0;">
-                        {ref_note}
-                    </p>
-                </div>
+            <div class="progress-container">
+                <div class="progress-fill" style="width: {percent}%;"></div>
+            </div>
+            <div class="progress-labels">
+                <span>Katılıyor</span>
+                <span>Katılmıyor</span>
             </div>
         </div>
-        """
-        # HTML'İ BASIYORUZ
+        <div class="note-box">
+            <div class="note-header">📄 Analiz Notu</div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin:0;">
+                {ref_note}
+            </p>
+        </div>
+    </div>
+</div>
+"""
         st.markdown(html_content, unsafe_allow_html=True)
         
     else:
@@ -235,19 +227,19 @@ with col_right:
             icon_symbol = "✔" if is_agree else "✖"
             avatar_url = f"https://i.pravatar.cc/100?u={index + 50}"
 
-            # Yorumcu HTML
+            # Yorumcular için de girintiyi kaldırıyoruz
             commentator_html = f"""
-            <div class="commentator-item">
-                <img src="{avatar_url}" class="avatar">
-                <div style="flex: 1;">
-                    <div style="font-weight: 700; margin-bottom: 4px; color: var(--text-white);">{y_isim}</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
-                        "{y_yorum[:100]}..."
-                    </div>
-                </div>
-                <div class="icon-box {icon_cls}">{icon_symbol}</div>
-            </div>
-            """
+<div class="commentator-item">
+    <img src="{avatar_url}" class="avatar">
+    <div style="flex: 1;">
+        <div style="font-weight: 700; margin-bottom: 4px; color: var(--text-white);">{y_isim}</div>
+        <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+            "{y_yorum[:100]}..."
+        </div>
+    </div>
+    <div class="icon-box {icon_cls}">{icon_symbol}</div>
+</div>
+"""
             st.markdown(commentator_html, unsafe_allow_html=True)
             
     st.markdown("</div>", unsafe_allow_html=True)
