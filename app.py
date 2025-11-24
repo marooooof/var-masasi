@@ -41,4 +41,17 @@ st.markdown("---") # Sadece bir ayırıcı çizgi
 # Veri yükleme başarılıysa
 if not df.empty:
     
-    # "Toplanan Ham Veri" vb. alt başlıklar sil
+    # "Toplanan Ham Veri" vb. alt başlıklar silindi.
+    
+    # Veri Tablosu
+    st.dataframe(
+        df, 
+        use_container_width=True, 
+        hide_index=True 
+    )
+
+    st.markdown("---")
+    
+else:
+    # Veri boşsa (hata varsa) boş bir çizgi görünür.
+    pass
