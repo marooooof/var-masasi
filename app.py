@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # --- 1. AYARLAR VE DATA ---
-st.set_page_config(page_title="Var Masası", layout="wide", page_icon="⚽")
+st.set_page_config(page_title="VAR Masası", layout="wide", page_icon="⚽")
 
 G_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10IDYPgr-8C_xmrWtRrTiG3uXiOYLachV3XjhpGlY1Ug/export?format=csv&gid=82638230'
 
@@ -28,142 +28,180 @@ df = load_data(G_SHEET_URL)
 
 # Veri varsa ve henüz seçim yapılmadıysa ilkini seç
 if not df.empty and st.session_state.selected_pos_name is None:
-    # Boş olmayan ilk olayı bul
     valid_events = df['Olay'].dropna().unique().tolist()
     if valid_events:
         st.session_state.selected_pos_name = valid_events[0]
 
-# --- 2. CSS TASARIM ---
+# --- 2. CSS TASARIM (Readdy Stili) ---
 st.markdown("""
 <style>
-    /* Global Reset & Dark Theme */
-    .stApp {
-        background-color: #0E0E11;
-        font-family: 'Inter', sans-serif;
-        color: #EAEAEA;
-    }
+    /* --- GENEL AYARLAR --- */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+    :root {
+        --bg-dark: #0E0E11;
+        --card-dark: #1A1A1F;
+        --accent-green: #00FF85;
+        --accent-purple: #6A0CFF;
+        --accent-red: #E53E3E;
+        --text-white: #EAEAEA;
+        --text-muted: #A0A0A0;
+    }
+
+    .stApp {
+        background-color: var(--bg-dark);
+        font-family: 'Inter', sans-serif;
+        color: var(--text-white);
     }
     
     /* Header Gizleme */
     header {visibility: hidden;}
-    
-    /* BUTON STİLLERİ (Sol Liste İçin) */
-    div.stButton > button {
-        width: 100%;
-        background-color: #0B0B0D;
-        border: 1px solid #222228;
-        color: #EAEAEA;
-        border-radius: 8px;
-        text-align: left;
-        padding: 10px 15px;
-        transition: all 0.2s;
-        display: flex;
-        justify-content: flex-start;
-    }
-    
-    div.stButton > button:hover {
-        border-color: #0094FF;
-        color: #0094FF;
-        background-color: #121217;
-    }
+    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
 
-    div.stButton > button:focus {
-        border-color: #0094FF;
-        background-color: #0094FF;
-        color: white;
-    }
+    /* --- BİLEŞEN STİLLERİ --- */
     
-    /* Kart Stilleri */
-    .glass-card {
-        background: rgba(17,17,19,0.55);
-        backdrop-filter: blur(6px);
-        border: 1px solid #222228;
+    /* KARTLAR (Sol, Orta, Sağ Konteynerler) */
+    .custom-card {
+        background-color: var(--card-dark);
         border-radius: 16px;
         padding: 20px;
         margin-bottom: 20px;
+        height: 100%; /* Kolon yüksekliğini doldur */
     }
+    .card-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;}
+
+    /* SOL LİSTE BUTONLARI (Streamlit Butonlarını Özelleştirme) */
+    div.stButton > button {
+        width: 100%;
+        background-color: var(--card-dark);
+        border: 1px solid #2A2A2F;
+        color: var(--text-white);
+        border-radius: 999px; /* Tam yuvarlak */
+        text-align: left;
+        padding: 12px 20px;
+        margin-bottom: 8px;
+        font-weight: 600;
+        display: flex; justify-content: space-between; align-items: center;
+        transition: all 0.2s;
+    }
+    div.stButton > button:hover { border-color: var(--accent-green); }
     
-    .inner-card {
-        background: #0B0B0D;
-        border: 1px solid #1A1A1F;
-        border-radius: 12px;
-        padding: 16px;
+    /* Aktif Buton Stili (Python tarafında kontrol edilecek) */
+    .active-button {
+        background-color: var(--accent-green) !important;
+        color: black !important;
+        border: none !important;
     }
+    /* Diğer etiketler */
+    .badge-purple { background: #2A1A3F; color: var(--accent-purple); padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;}
+    .badge-gray { background: #2A2A2F; color: var(--text-muted); padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;}
 
-    /* Badge & Text */
-    .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
+
+    /* ORTA ALAN - KARAR ETİKETİ */
+    .decision-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 20px; border-radius: 999px; font-weight: 700;
+        text-transform: uppercase; margin-bottom: 20px; font-size: 0.9rem;
     }
-    .badge-blue { background: #0094FF; color: white; }
-    .badge-dark { background: #121217; color: #EAEAEA; border: 1px solid #222228; }
-    .badge-red { background: #E53E3E; color: white; }
-    .badge-green { background: #38A169; color: white; }
-    .muted { color: rgba(234,234,234,0.65); font-size: 0.85rem; }
+    .badge-green-fill { background: var(--accent-green); color: black; }
+    .badge-red-fill { background: var(--accent-red); color: white; }
+    .badge-dark-fill { background: #2A2A2F; color: var(--text-white); }
 
-    /* Yorumcu Listesi */
+    /* PROGRESS BAR */
+    .progress-container {
+        background: #2A2A2F; border-radius: 999px; height: 10px; width: 100%; overflow: hidden; margin-top: 10px;
+    }
+    .progress-fill { height: 100%; background: var(--accent-green); border-radius: 999px; }
+    .progress-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
+
+    /* ANALİZ NOTU KUTUSU */
+    .note-box {
+        background: #222227; border-radius: 12px; padding: 15px; margin-top: 20px;
+    }
+    .note-header { font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; color: var(--accent-green);}
+
+    /* SAĞ ALAN - YORUMCU KARTLARI */
     .commentator-item {
-        display: flex; gap: 12px; padding: 12px;
-        background: #0B0B0D; border: 1px solid #1A1A1F;
-        border-radius: 12px; margin-bottom: 10px;
+        display: flex; gap: 12px; padding: 15px;
+        background: #222227; border-radius: 12px; margin-bottom: 10px; align-items: flex-start;
     }
     .avatar {
-        width: 40px; height: 40px; border-radius: 50%;
-        background: #1A1A1F; display: flex; align-items: center; 
-        justify-content: center; font-weight: bold; color: #0094FF;
+        width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
     }
-    
-    /* Progress Bar */
-    .progress-bg { background:#121217; border-radius:999px; height:8px; width:100%; margin-top:8px; overflow:hidden;}
-    .progress-fill { height:100%; background: linear-gradient(90deg,#0094FF,#6a0cff); }
+    .icon-box {
+        width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .icon-check { background: var(--accent-green); color: black; }
+    .icon-cross { background: var(--accent-red); color: white; }
+
+    /* ÜST BAR (ARAMA & BUTON) */
+    .top-bar-input {
+        background: var(--card-dark); border: 1px solid #2A2A2F; color: var(--text-muted);
+        padding: 8px 15px; border-radius: 999px; outline: none; width: 250px;
+    }
+    .top-bar-btn {
+        background: var(--accent-green); color: black; padding: 8px 20px; border-radius: 999px;
+        font-weight: 600; border: none; cursor: pointer;
+    }
 
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. ÜST BAR ---
-col_h1, col_h2 = st.columns([1, 2])
-with col_h1:
+# --- 3. ÜST BAR (HEADER) ---
+c1, c2 = st.columns([1, 2])
+with c1:
+    st.markdown('<div style="display: flex; align-items: center; gap: 12px; font-size: 1.5rem; font-weight: 700;"><div style="width:40px;height:40px;background:var(--accent-green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:black;font-weight:bold;">VC</div>VAR Masası</div>', unsafe_allow_html=True)
+with c2:
+    # Sağ tarafa arama ve buton (Görsel amaçlı HTML)
     st.markdown("""
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #0094FF, #FFC700); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #000;">VC</div>
-        <h2 style="font-size: 1.5rem; color: white;">Var Masası</h2>
+    <div style="display: flex; justify-content: flex-end; gap: 15px; align-items: center;">
+        <input type="text" class="top-bar-input" placeholder="Pozisyon ara...">
+        <button class="top-bar-btn">Yeni Analiz Ekle</button>
     </div>
     """, unsafe_allow_html=True)
 
-# --- 4. ANA IZGARA ---
+st.markdown("<br>", unsafe_allow_html=True) # Boşluk
+
+# --- 4. ANA IZGARA (GRID) ---
 col_left, col_center, col_right = st.columns([3, 6, 3])
 
-# --- SOL KOLON: TIKLANABİLİR LİSTE ---
+# --- SOL KOLON: POZİSYON LİSTESİ ---
 with col_left:
     st.markdown("""
-    <div class="glass-card" style="padding-bottom: 10px;">
-        <h3 style="font-size: 1rem; margin-bottom: 15px;">Pozisyon Listesi</h3>
-        <div style="opacity: 0.7; font-size: 0.85rem; margin-bottom: 10px;">Son eklenen olaylar:</div>
-    </div>
+    <div class="custom-card">
+        <div class="card-title"><span style="color:var(--accent-green);">≡</span> Pozisyon Listesi</div>
     """, unsafe_allow_html=True)
     
     if not df.empty:
-        # Benzersiz olayları al
         unique_events = df['Olay'].dropna().unique()
         
-        # Her olay için bir Streamlit butonu oluştur
         for event in unique_events:
-            # Butona basılırsa session_state'i güncelle
-            if st.button(event, key=f"btn_{event}", use_container_width=True):
-                st.session_state.selected_pos_name = event
-                st.rerun() # Sayfayı yenile ki orta kısım güncellensin
+            is_active = (event == st.session_state.selected_pos_name)
+            
+            # Aktif buton için özel stil uygula
+            if is_active:
+                 st.markdown(f"""
+                 <style>
+                 div.stButton > button[data-testid="baseButton-secondary"][aria-label="{event}"] {{
+                     background-color: var(--accent-green) !important;
+                     color: black !important;
+                     border: none !important;
+                 }}
+                 div.stButton > button[data-testid="baseButton-secondary"][aria-label="{event}"]::after {{
+                     content: "Aktif"; margin-left: auto; font-size: 0.8rem;
+                 }}
+                 </style>
+                 """, unsafe_allow_html=True)
 
-# --- ORTA KOLON: DETAY (BUG FİX YAPILDI) ---
+            # Butona basılırsa state'i güncelle
+            if st.button(event, key=f"btn_{event}", use_container_width=True, label=event):
+                st.session_state.selected_pos_name = event
+                st.rerun()
+                
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# --- ORTA KOLON: DETAY ---
 with col_center:
-    # Seçili pozisyon varsa işle
     if st.session_state.selected_pos_name and not df.empty:
         selected_pos = st.session_state.selected_pos_name
         filtered_df = df[df['Olay'] == selected_pos]
@@ -172,62 +210,68 @@ with col_center:
         ref_decision = safe_get(filtered_df, 'Hakem Karar')
         ref_note = safe_get(filtered_df, 'Yorum')
         match_name = safe_get(filtered_df, 'Maç Adı', 'Bilinmiyor')
-        
+        dakika = "23. Dakika" # Veride dakika yoksa placeholder
+
         # Badge rengi
-        badge_cls = "badge-dark"
-        if "penaltı" in str(ref_decision).lower(): badge_cls = "badge-blue"
-        elif "kırmızı" in str(ref_decision).lower(): badge_cls = "badge-red"
-        elif "devam" in str(ref_decision).lower() or "doğru" in str(ref_decision).lower(): badge_cls = "badge-green"
+        badge_cls = "badge-dark-fill"
+        badge_icon = "⚖️"
+        if "penaltı" in str(ref_decision).lower(): badge_cls = "badge-green-fill"; badge_icon="✅"
+        elif "kırmızı" in str(ref_decision).lower(): badge_cls = "badge-red-fill"; badge_icon="🟥"
+        elif "devam" in str(ref_decision).lower() or "doğru" in str(ref_decision).lower(): badge_cls = "badge-green-fill"; badge_icon="✅"
 
         # İstatistik
         agree_count = filtered_df[filtered_df['6. sütun'] == 'Evet'].shape[0]
         total = len(filtered_df)
         percent = round((agree_count/total)*100) if total > 0 else 0
 
-        # HTML KART OLUŞTURMA (String birleştirme hatası düzeltildi)
-        html_card = f"""
-        <div class="glass-card">
-            <div style="margin-bottom: 15px;">
-                <span class="badge badge-dark">{match_name}</span>
-                <span class="badge badge-blue" style="margin-left: 5px;">VAR İncelemesi</span>
+        st.markdown(f"""
+        <div class="custom-card" style="padding:0; overflow:hidden;">
+            <div style="height: 300px; position: relative; background: url('https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80') center/cover;">
+                <div style="position: absolute; top: 15px; left: 15px; background: #6A0CFF; color: white; padding: 5px 15px; border-radius: 999px; font-weight: 700; font-size: 0.8rem;">{dakika}</div>
             </div>
             
-            <div style="background: #0B0B0D; border: 1px solid #1A1A1F; border-radius: 12px; height: 300px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px;">
-                <img src="https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=800&q=80" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
-            </div>
-            
-            <div class="inner-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div>
-                        <div style="font-size: 1.1rem; font-weight: 600;">Hakem Kararı: {ref_decision}</div>
+            <div style="padding: 25px;">
+                <div class="decision-badge {badge_cls}">
+                    <span>{badge_icon}</span> {str(ref_decision).toUpperCase()}
+                </div>
+                
+                <h2 style="margin-bottom: 15px;">Hakem Kararı</h2>
+                <p style="color: var(--text-white); line-height: 1.6; opacity: 0.9;">
+                    {match_name} maçında yaşanan bu pozisyonda hakem kararı <b>{ref_decision}</b> yönünde olmuştur.
+                </p>
+                
+                <div style="margin-top: 30px; margin-bottom: 30px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px;">
+                        <span>Kamuoyu Görüşü</span>
+                        <span style="color:var(--accent-green);">{percent}%</span>
                     </div>
-                    <div class="badge {badge_cls}">{str(ref_decision).upper()}</div>
+                    <div class="progress-container">
+                        <div class="progress-fill" style="width: {percent}%;"></div>
+                    </div>
+                    <div class="progress-labels">
+                        <span>Katılıyor</span>
+                        <span>Katılmıyor</span>
+                    </div>
                 </div>
-                <div class="muted" style="margin-top: 10px; line-height: 1.5;">
-                    <span style="color: #0094FF; font-weight:bold;">Analiz Notu:</span> {ref_note}
+                
+                <div class="note-box">
+                    <div class="note-header">📄 Analiz Notu</div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;">
+                        {ref_note}
+                    </p>
                 </div>
-            </div>
-            
-            <div style="margin-top: 20px; padding: 12px; border: 1px solid #222228; border-radius: 12px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px;">
-                    <span class="muted">Hakemle aynı görüşteki yorumcular</span>
-                    <span style="font-weight: bold;">%{percent}</span>
-                </div>
-                <div class="progress-bg">
-                    <div class="progress-fill" style="width: {percent}%;"></div>
-                </div>
+
             </div>
         </div>
-        """
-        st.markdown(html_card, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     else:
         st.info("Lütfen soldaki listeden bir pozisyon seçiniz.")
 
 # --- SAĞ KOLON: YORUMCULAR ---
 with col_right:
     st.markdown("""
-    <div class="glass-card">
-        <h3 style="font-size: 1rem; margin-bottom: 15px;">Yorumcular</h3>
+    <div class="custom-card">
+        <div class="card-title">💬 Yorumcu Görüşleri</div>
     """, unsafe_allow_html=True)
     
     if st.session_state.selected_pos_name and not df.empty:
@@ -236,21 +280,23 @@ with col_right:
             y_yorum = safe_get(pd.DataFrame([row]), 'Yorum', '-')
             y_fikir = safe_get(pd.DataFrame([row]), '6. sütun', 'Hayır')
             
-            icon = "✅" if y_fikir == 'Evet' else "❌"
-            initial = y_isim[0] if len(y_isim) > 0 else "A"
+            is_agree = (y_fikir == 'Evet')
+            icon_cls = "icon-check" if is_agree else "icon-cross"
+            icon_symbol = "✔" if is_agree else "✖"
             
+            # Avatar için rastgele bir resim (Gerçek veride URL olmalı)
+            avatar_url = f"https://i.pravatar.cc/100?u={index}"
+
             st.markdown(f"""
             <div class="commentator-item">
-                <div class="avatar">{initial}</div>
+                <img src="{avatar_url}" class="avatar">
                 <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="font-weight: 600; font-size: 0.9rem;">{y_isim}</span>
-                        <span style="font-size: 0.8rem;">{icon}</span>
-                    </div>
-                    <div class="muted" style="font-size: 0.8rem; line-height: 1.4;">
-                        "{y_yorum[:100]}..."
+                    <div style="font-weight: 700; margin-bottom: 4px;">{y_isim}</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+                        "{y_yorum[:120]}..."
                     </div>
                 </div>
+                <div class="icon-box {icon_cls}">{icon_symbol}</div>
             </div>
             """, unsafe_allow_html=True)
             
